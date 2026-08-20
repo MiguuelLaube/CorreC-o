@@ -8,7 +8,7 @@ const STORAGE_KEYS = {
   SOLICITATIONS: 'correntecao_solicitations',
   FOSTER_REQUESTS: 'correntecao_foster_requests',
   PARTNERS: 'correntecao_partners',
-  INITIALIZED: 'correntecao_initialized_v1'
+  INITIALIZED: 'correntecao_initialized_v2'
 };
 
 // ==========================================
@@ -56,7 +56,7 @@ function mapPetFromSupabase(row: any): Pet {
     id: String(row.id),
     name: row.name || row.nome || '',
     species: (row.species || (row.especie === 'cao' ? 'Cachorro' : row.especie === 'gato' ? 'Gato' : 'Cachorro')) as any,
-    breed: row.breed || 'SRD (Sem Raça Definida)',
+    breed: row.breed || 'SRD',
     city: row.city || 'São Paulo',
     state: row.state || 'SP',
     age: row.age || (row.idade_aproximada ? `${row.idade_aproximada}` : '2 anos'),
@@ -64,16 +64,14 @@ function mapPetFromSupabase(row: any): Pet {
     gender: (row.gender || (row.genero === 'macho' ? 'Macho' : 'Fêmea')) as any,
     size: (row.size || (row.porte === 'pequeno' ? 'Pequeno' : row.porte === 'grande' ? 'Grande' : 'Médio')) as any,
     color: row.color || row.cor || 'Caramelo',
-    vaccination: row.vaccination || (row.vacinado ? 'Completa' : 'Pendente'),
+    vaccination: row.vaccination || (row.vacinado ? 'Vacinado' : 'Pendente'),
     castrated: Boolean(row.castrated ?? row.castrado),
     dewormed: Boolean(row.dewormed ?? true),
     specialNeeds: Boolean(row.special_needs ?? false),
-    temperament: row.temperament || ['Dócil', 'Sociável'],
     mainImage: row.main_image || (row.fotos && row.fotos[0]) || 'https://images.unsplash.com/photo-1543466835-00a7907e9de1',
     galleryImages: row.gallery_images || (row.fotos ? row.fotos.slice(1) : []),
-    story: row.story || (row.descricao ? [row.descricao] : []),
     ongId: String(row.ong_id || 'amigos-de-patas'),
-    ongName: row.ong_name || 'ONG Parceira',
+    ongName: row.ong_name || 'ONG Amigo Fiel',
     entryDate: row.entry_date || new Date().toLocaleDateString('pt-BR'),
     status: (row.status === 'disponivel' ? 'Disponível' : row.status === 'em_processo' ? 'Em Processo' : row.status === 'adotado' ? 'Adotado' : (row.status || 'Disponível')) as any,
     favorite: Boolean(row.favorite)
@@ -84,25 +82,23 @@ function mapPetToSupabase(pet: Pet): any {
   return {
     id: pet.id,
     name: pet.name,
-    species: pet.species,
-    breed: pet.breed,
-    city: pet.city,
-    state: pet.state,
+    species: pet.species || 'Cachorro',
+    breed: pet.breed || 'SRD',
+    city: pet.city || 'São Paulo',
+    state: pet.state || 'SP',
     age: pet.age,
-    age_group: pet.ageGroup,
+    age_group: pet.ageGroup || 'Adulto',
     gender: pet.gender,
     size: pet.size,
-    color: pet.color,
+    color: pet.color || 'Caramelo',
     vaccination: pet.vaccination,
-    castrated: pet.castrated,
+    castrated: pet.castrated ?? true,
     dewormed: pet.dewormed ?? true,
     special_needs: pet.specialNeeds ?? false,
-    temperament: pet.temperament,
     main_image: pet.mainImage,
     gallery_images: pet.galleryImages || [],
-    story: pet.story,
-    ong_id: pet.ongId,
-    ong_name: pet.ongName,
+    ong_id: pet.ongId || 'amigos-de-patas',
+    ong_name: pet.ongName || 'ONG Amigo Fiel',
     entry_date: pet.entryDate,
     status: pet.status,
     favorite: pet.favorite ?? false
@@ -116,6 +112,8 @@ function mapOngFromSupabase(row: any): ONG {
     city: row.city || (row.endereco ? row.endereco.split(',')[0] : 'São Paulo'),
     state: row.state || 'SP',
     phone: row.phone || row.telefone_whatsapp || '(11) 98765-4321',
+    email: row.email || 'contato@ongparceira.org.br',
+    address: row.endereco || row.address || 'São Paulo, SP',
     image: row.image || 'https://images.unsplash.com/photo-1548199973-03cce0bbc87b',
     description: row.description || '',
     petsCount: row.pets_count || 0,
@@ -130,6 +128,7 @@ function mapOngToSupabase(ong: ONG): any {
     city: ong.city,
     state: ong.state,
     phone: ong.phone,
+    email: ong.email,
     image: ong.image,
     description: ong.description,
     pets_count: ong.petsCount,
@@ -143,11 +142,20 @@ function mapSolicitationFromSupabase(row: any): Solicitation {
     type: (row.type === 'adocao' ? 'Adoção' : row.type === 'acolhimento' ? 'Visita' : (row.type || 'Visita')) as any,
     petId: String(row.pet_id || ''),
     petName: row.pet_name || 'Pet Cadastrado',
+    petImage: row.pet_image,
     requesterName: row.requester_name || 'Solicitante',
+    requesterEmail: row.requester_email || row.email,
     dateOrDetails: row.date_or_details || row.mensagem || '',
     status: (row.status === 'aprovada' ? 'approved' : row.status === 'recusada' ? 'rejected' : (row.status || 'pending')) as any,
+    adoptionGranted: Boolean(row.adoption_granted ?? (row.status === 'approved' && row.type === 'Adoção')),
     phone: row.phone || '',
-    email: row.email || ''
+    email: row.email || '',
+    ongId: row.ong_id || 'amigos-de-patas',
+    ongName: row.ong_name || 'Amigos de Patas',
+    ongPhone: row.ong_phone || '(11) 98765-4321',
+    ongEmail: row.ong_email || 'contato@amigosdepatas.org.br',
+    ongAddress: row.ong_address || 'Av. Paulista, 1200 - São Paulo, SP',
+    createdAt: row.created_at || new Date().toISOString()
   };
 }
 
@@ -175,7 +183,10 @@ function mapFosterFromSupabase(row: any): FosterRequest {
     status: (row.status === 'aprovada' ? 'accepted' : row.status === 'recusada' ? 'declined' : (row.status || 'pending')) as any,
     photoUrl: row.photo_url || row.dados_animal_proprio?.foto,
     requesterName: row.requester_name,
-    phone: row.phone
+    phone: row.phone,
+    acceptedByOngName: row.accepted_by_ong_name || (row.status === 'accepted' ? 'Amigos de Patas' : undefined),
+    acceptedByOngPhone: row.accepted_by_ong_phone || (row.status === 'accepted' ? '(11) 98765-4321' : undefined),
+    acceptedByOngAddress: row.accepted_by_ong_address || (row.status === 'accepted' ? 'Av. Paulista, 1200 - São Paulo, SP' : undefined)
   };
 }
 

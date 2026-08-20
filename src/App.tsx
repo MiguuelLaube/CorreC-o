@@ -13,6 +13,7 @@ import {
   OngDashboardView,
   FosterFormView,
   AboutView,
+  UserPortalViews,
   AdoptionInterestModal,
   IndicarOngModal,
   AuthModal,
@@ -87,7 +88,12 @@ export default function App() {
   const handleLogout = () => {
     authService.logout();
     setCurrentUser(null);
-    if (activeTab === 'painel-ong') {
+    if (
+      activeTab === 'painel-ong' ||
+      activeTab === 'status-interesse' ||
+      activeTab === 'solicitacoes-adocao' ||
+      activeTab === 'triagem-incompleta'
+    ) {
       setActiveTab('adotar');
     }
     triggerToast('Você encerrou a sessão.');
@@ -129,26 +135,19 @@ export default function App() {
     const fullPet: Pet = {
       id,
       name: newPetData.name || 'Novo Pet',
-      species: newPetData.species || 'Cachorro',
-      breed: newPetData.breed || 'SRD',
-      city: newPetData.city || 'São Paulo',
-      state: newPetData.state || 'SP',
       age: newPetData.age || '1 ano',
-      ageGroup: newPetData.ageGroup || 'Adulto',
-      gender: newPetData.gender || 'Macho',
       size: newPetData.size || 'Médio',
-      color: newPetData.color || 'Dourado',
-      vaccination: newPetData.vaccination || 'Em dia',
-      castrated: newPetData.castrated ?? true,
-      dewormed: true,
-      temperament: newPetData.temperament || ['Dócil', 'Amoroso'],
+      gender: newPetData.gender || 'Macho',
+      vaccination: newPetData.vaccination || 'Vacinado',
       mainImage:
         newPetData.mainImage ||
-        'https://lh3.googleusercontent.com/aida-public/AB6AXuBhmoZIYpAE2ONKirfuZcJWXqW3qZR3OY3bnMbiokAo1HYJX9bKCG_qk1I9SQDZhnWo0LNDGRdC2mkO0TVKZMqCBozPVz80yuk1ggFOsSPsDdzP1MlIElifQ4JD8fXaot92LJWBKulWKZ9YXj-8rIMEId3I5sEEXxl-DXerG0kVX3YwX9YVsF45CG4_-VTgTLEfTwQzmtZ1Ygt6lkDxelsUSXrUXW6oNpu9dLeeaJwJlMJPOlnHu8leKQ',
+        'https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&w=600&q=80',
       galleryImages: [],
-      story: newPetData.story || ['Animalzinho resgatado com muito carinho procurando um novo lar.'],
-      ongId: newPetData.ongId || 'amigos-de-patas',
-      ongName: newPetData.ongName || 'ONG Amigo Fiel',
+      species: 'Cachorro',
+      city: 'São Paulo',
+      state: 'SP',
+      ongId: 'amigos-de-patas',
+      ongName: 'ONG Amigo Fiel',
       entryDate: new Date().toLocaleDateString('pt-BR'),
       status: 'Disponível',
       favorite: false
@@ -156,7 +155,7 @@ export default function App() {
 
     await dbService.savePet(fullPet);
     setPets((prev) => [fullPet, ...prev]);
-    triggerToast(`Pet ${fullPet.name} salvo no banco de dados com sucesso!`);
+    triggerToast(`Pet ${fullPet.name} cadastrado com sucesso!`);
   };
 
   const handleDeletePet = async (petId: string) => {
@@ -190,16 +189,24 @@ export default function App() {
       type: 'Visita',
       petId: petForInterestModal.id,
       petName: petForInterestModal.name,
+      petImage: petForInterestModal.mainImage,
       requesterName: data.name,
+      requesterEmail: data.email || currentUser?.email || 'user@gmail.com',
       dateOrDetails: `${data.date} (${data.notes})`,
       status: 'pending',
       phone: data.phone,
-      email: data.email
+      email: data.email,
+      ongId: petForInterestModal.ongId || 'amigos-de-patas',
+      ongName: petForInterestModal.ongName || 'Amigos de Patas',
+      ongPhone: '(11) 98765-4321',
+      ongEmail: 'contato@amigosdepatas.org.br',
+      ongAddress: 'São Paulo - SP',
+      createdAt: new Date().toISOString()
     };
 
     await dbService.saveSolicitation(newSolicitation);
     setSolicitations((prev) => [newSolicitation, ...prev]);
-    triggerToast(`Visita agendada e salva no banco para conhecer ${petForInterestModal.name}!`);
+    triggerToast(`Visita agendada para conhecer ${petForInterestModal.name}! Acompanhe em Meus Interesses.`);
   };
 
   const handleIndicarOngSubmit = async (newOng: Partial<ONG>) => {
@@ -210,6 +217,8 @@ export default function App() {
       city: newOng.city || 'São Paulo',
       state: newOng.state || 'SP',
       phone: newOng.phone || '(11) 90000-0000',
+      email: 'contato@ongparceira.org.br',
+      address: `${newOng.city || 'São Paulo'}, SP`,
       image:
         newOng.image ||
         'https://lh3.googleusercontent.com/aida-public/AB6AXuCeLWHs24XaUcWLidTvmpWuyCMw79Zvw3YtCMtvI7QR2MEDwN0zEEk7pBgnaXtzl3m-Ow18esAG9DeT1_Loqm8j6moJmSbj0oF_-aB6alzR1XWIn_UZOKA3kl7fCPNLN6TzmJidMgALYrc-JHjx4_ycMy5pTvzEwjjACU7aeSp6LncJsSlsfJsqdI10izFuoaQbL-UyOyNSmFMS-HR4Y_MSAEyxsF4F_VIM0YoiuWNBBFBhKrJCKWDkkg',
@@ -227,8 +236,10 @@ export default function App() {
       id: `foster-${Date.now()}`,
       petName: data.petName,
       species: data.species,
+      size: 'Médio',
       reason: data.reason,
-      requesterName: data.requesterName,
+      requesterName: data.requesterName || currentUser?.name || 'Cliente',
+      requesterEmail: currentUser?.email || 'user@gmail.com',
       phone: data.phone,
       timestamp: 'Hoje, ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
       status: 'pending',
@@ -237,13 +248,13 @@ export default function App() {
 
     await dbService.saveFosterRequest(newFoster);
     setFosterRequests((prev) => [newFoster, ...prev]);
-    triggerToast('Solicitação de acolhimento gravada no banco de dados!');
+    triggerToast('Solicitação de triagem gravada no banco de dados! Acompanhe na aba Triagens.');
   };
 
   const handleApproveSolicitation = async (id: string) => {
     await dbService.updateSolicitationStatus(id, 'approved');
     setSolicitations((prev) =>
-      prev.map((s) => (s.id === id ? { ...s, status: 'approved' } : s))
+      prev.map((s) => (s.id === id ? { ...s, status: 'approved', adoptionGranted: true } : s))
     );
     triggerToast('Solicitação aprovada e atualizada no banco!');
   };
@@ -251,7 +262,7 @@ export default function App() {
   const handleRejectSolicitation = async (id: string) => {
     await dbService.updateSolicitationStatus(id, 'rejected');
     setSolicitations((prev) =>
-      prev.map((s) => (s.id === id ? { ...s, status: 'rejected' } : s))
+      prev.map((s) => (s.id === id ? { ...s, status: 'rejected', adoptionGranted: false } : s))
     );
     triggerToast('Solicitação recusada e atualizada no banco.');
   };
@@ -259,13 +270,27 @@ export default function App() {
   const handleAcceptFoster = async (id: string) => {
     await dbService.updateFosterStatus(id, 'accepted');
     setFosterRequests((prev) =>
-      prev.map((f) => (f.id === id ? { ...f, status: 'accepted' } : f))
+      prev.map((f) =>
+        f.id === id
+          ? {
+              ...f,
+              status: 'accepted',
+              acceptedByOngName: 'Amigos de Patas',
+              acceptedByOngPhone: '(11) 98765-4321',
+              acceptedByOngAddress: 'Av. Paulista, 1200 - São Paulo, SP'
+            }
+          : f
+      )
     );
     triggerToast('Acolhimento aceito e salvo no banco!');
   };
 
   const favoritesCount = pets.filter((p) => p.favorite).length;
   const isAdmin = currentUser?.role === 'admin';
+  const isClientTab =
+    activeTab === 'status-interesse' ||
+    activeTab === 'solicitacoes-adocao' ||
+    activeTab === 'triagem-incompleta';
 
   return (
     <div className="min-h-screen flex flex-col bg-[#f7f9fb] text-[#191c1e] antialiased">
@@ -328,6 +353,59 @@ export default function App() {
                 onSubmitFoster={handleFosterSubmit}
                 onGoBack={() => setActiveTab('adotar')}
               />
+            )}
+
+            {/* NOVAS 3 ABAS PARA CLIENTES LOGADOS */}
+            {isClientTab && (
+              currentUser ? (
+                <UserPortalViews
+                  activeTab={activeTab}
+                  setActiveTab={(tab) => {
+                    setActiveTab(tab);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  currentUser={currentUser}
+                  solicitations={solicitations}
+                  fosterRequests={fosterRequests}
+                  pets={pets}
+                  onSelectPet={handleSelectPet}
+                  onOpenNewFoster={() => setActiveTab('acolhimento')}
+                  onOpenAdoptionGallery={() => setActiveTab('adotar')}
+                />
+              ) : (
+                <div className="max-w-4xl mx-auto px-4 py-16 text-center my-auto">
+                  <div className="bg-white rounded-3xl p-8 md:p-12 shadow-sm border border-[#e0e3e5] max-w-lg mx-auto">
+                    <div className="w-20 h-20 bg-[#a0efd6] text-[#074469] rounded-2xl flex items-center justify-center mx-auto mb-5">
+                      <span className="material-symbols-outlined text-4xl">lock_person</span>
+                    </div>
+                    <span className="bg-[#074469] text-[#a0efd6] text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">
+                      Área do Adotante
+                    </span>
+                    <h2 className="font-['Plus_Jakarta_Sans'] text-2xl md:text-3xl font-bold text-[#074469] mt-4 mb-2">
+                      Acesso aos Seus Processos
+                    </h2>
+                    <p className="font-['Be_Vietnam_Pro'] text-sm text-[#41474e] mb-6 leading-relaxed">
+                      Faça login ou cadastre-se gratuitamente para acompanhar o status de interesse, solicitações de adoção e triagens em tempo real.
+                    </p>
+
+                    <div className="flex flex-col sm:flex-row gap-3 justify-center font-['Be_Vietnam_Pro'] text-sm">
+                      <button
+                        onClick={() => setActiveTab('adotar')}
+                        className="bg-[#f2f4f6] hover:bg-[#e0e3e5] text-[#191c1e] font-semibold px-5 py-2.5 rounded-xl transition-colors cursor-pointer"
+                      >
+                        Ver Animais
+                      </button>
+                      <button
+                        onClick={() => setAuthModalMode('login')}
+                        className="bg-[#074469] hover:bg-[#2a5c82] text-white font-bold px-5 py-2.5 rounded-xl transition-colors shadow-sm cursor-pointer flex items-center justify-center gap-2"
+                      >
+                        <span className="material-symbols-outlined text-base">login</span>
+                        Entrar na Conta
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )
             )}
 
             {/* CONTROLE DE ACESSO DO PAINEL ONG / ADMINISTRATIVO */}

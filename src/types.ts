@@ -1,5 +1,5 @@
 export type Species = 'Cachorro' | 'Gato' | 'Outro';
-export type Size = 'Pequeno' | 'Médio' | 'Grande' | 'Médio/Grande';
+export type Size = 'Pequeno' | 'Médio' | 'Grande';
 export type Gender = 'Macho' | 'Fêmea';
 export type AgeGroup = 'Filhote' | 'Adulto' | 'Idoso';
 
@@ -17,26 +17,24 @@ export interface User {
 export interface Pet {
   id: string;
   name: string;
-  species: Species;
-  breed: string;
-  city: string;
-  state: string;
+  species?: Species;
+  breed?: string;
+  city?: string;
+  state?: string;
   age: string;
-  ageGroup: AgeGroup;
+  ageGroup?: AgeGroup;
   gender: Gender;
   size: Size;
-  color: string;
+  color?: string;
   vaccination: string;
-  castrated: boolean;
+  castrated?: boolean;
   dewormed?: boolean;
   specialNeeds?: boolean;
-  temperament: string[];
   mainImage: string;
   galleryImages?: string[];
-  story: string[];
-  ongId: string;
-  ongName: string;
-  entryDate: string;
+  ongId?: string;
+  ongName?: string;
+  entryDate?: string;
   status: 'Disponível' | 'Em Processo' | 'Adotado';
   favorite?: boolean;
 }
@@ -51,6 +49,8 @@ export interface ONG {
   description: string;
   petsCount: number;
   featured?: boolean;
+  email?: string;
+  address?: string;
 }
 
 export interface Solicitation {
@@ -58,23 +58,42 @@ export interface Solicitation {
   type: 'Visita' | 'Adoção';
   petId: string;
   petName: string;
+  petImage?: string;
   requesterName: string;
+  requesterEmail?: string;
+  userId?: string;
   dateOrDetails: string;
-  status: 'pending' | 'approved' | 'rejected';
+  status: 'pending' | 'in_review' | 'approved' | 'rejected';
   phone?: string;
   email?: string;
+  ongId?: string;
+  ongName?: string;
+  ongPhone?: string;
+  ongEmail?: string;
+  ongAddress?: string;
+  adoptionGranted?: boolean;
+  createdAt?: string;
 }
 
 export interface FosterRequest {
   id: string;
+  userId?: string;
   petName: string;
   species: string;
+  size?: string;
   reason: string;
   timestamp: string;
   status: 'pending' | 'accepted' | 'declined';
   photoUrl?: string;
   requesterName?: string;
+  requesterEmail?: string;
   phone?: string;
+  acceptedByOngId?: string;
+  acceptedByOngName?: string;
+  acceptedByOngPhone?: string;
+  acceptedByOngEmail?: string;
+  acceptedByOngAddress?: string;
+  acceptedAt?: string;
 }
 
 export interface Partner {
@@ -88,4 +107,13 @@ export interface Partner {
   discountOrBenefit?: string;
 }
 
-export type ActiveTab = 'adotar' | 'ongs' | 'como-apoiar' | 'sobre-nos' | 'painel-ong' | 'acolhimento';
+export type ActiveTab =
+  | 'adotar'
+  | 'ongs'
+  | 'como-apoiar'
+  | 'sobre-nos'
+  | 'painel-ong'
+  | 'acolhimento'
+  | 'status-interesse'
+  | 'solicitacoes-adocao'
+  | 'triagem-incompleta';

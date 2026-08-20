@@ -31,6 +31,8 @@ CREATE TABLE IF NOT EXISTS public.ongs (
     city TEXT NOT NULL,
     state TEXT NOT NULL,
     phone TEXT NOT NULL,
+    email TEXT,
+    address TEXT,
     image TEXT NOT NULL,
     description TEXT,
     pets_count INTEGER DEFAULT 0,
@@ -38,29 +40,22 @@ CREATE TABLE IF NOT EXISTS public.ongs (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- 3. TABELA DE PETS (ANIMAIS PARA ADOÇÃO)
+-- 3. TABELA DE PETS (CADASTRO ENXUTO: NOME, IDADE, PORTE, GÊNERO, VACINADO, FOTOS)
 CREATE TABLE IF NOT EXISTS public.pets (
     id TEXT PRIMARY KEY,
-    name TEXT NOT NULL,
-    species TEXT NOT NULL CHECK (species IN ('Cachorro', 'Gato', 'Outro')),
-    breed TEXT NOT NULL,
-    city TEXT NOT NULL,
-    state TEXT NOT NULL,
-    age TEXT NOT NULL,
-    age_group TEXT NOT NULL CHECK (age_group IN ('Filhote', 'Adulto', 'Idoso')),
-    gender TEXT NOT NULL CHECK (gender IN ('Macho', 'Fêmea')),
-    size TEXT NOT NULL CHECK (size IN ('Pequeno', 'Médio', 'Grande', 'Médio/Grande')),
-    color TEXT NOT NULL,
-    vaccination TEXT DEFAULT 'Vacinado',
-    castrated BOOLEAN DEFAULT FALSE,
-    dewormed BOOLEAN DEFAULT FALSE,
-    special_needs BOOLEAN DEFAULT FALSE,
-    temperament TEXT[] DEFAULT '{}',
+    name VARCHAR(100) NOT NULL,
+    age VARCHAR(50) NOT NULL,
+    size VARCHAR(20) NOT NULL CHECK (size IN ('Pequeno', 'Médio', 'Grande')),
+    gender VARCHAR(10) NOT NULL CHECK (gender IN ('Macho', 'Fêmea')),
+    vaccination VARCHAR(50) DEFAULT 'Vacinado',
     main_image TEXT NOT NULL,
     gallery_images TEXT[] DEFAULT '{}',
-    story TEXT[] DEFAULT '{}',
+    species TEXT DEFAULT 'Cachorro',
+    breed TEXT DEFAULT 'SRD',
+    city TEXT DEFAULT 'São Paulo',
+    state TEXT DEFAULT 'SP',
     ong_id TEXT REFERENCES public.ongs(id) ON DELETE SET NULL,
-    ong_name TEXT NOT NULL,
+    ong_name TEXT DEFAULT 'ONG Amigo Fiel',
     entry_date TEXT,
     status TEXT DEFAULT 'Disponível' CHECK (status IN ('Disponível', 'Em Processo', 'Adotado')),
     favorite BOOLEAN DEFAULT FALSE,
@@ -73,29 +68,44 @@ CREATE TABLE IF NOT EXISTS public.solicitations (
     type TEXT NOT NULL CHECK (type IN ('Visita', 'Adoção')),
     pet_id TEXT REFERENCES public.pets(id) ON DELETE CASCADE,
     pet_name TEXT NOT NULL,
+    pet_image TEXT,
     requester_name TEXT NOT NULL,
+    requester_email TEXT,
     date_or_details TEXT NOT NULL,
     phone TEXT,
     email TEXT,
-    status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+    status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'in_review', 'approved', 'rejected')),
+    adoption_granted BOOLEAN DEFAULT FALSE,
+    ong_id TEXT,
+    ong_name TEXT,
+    ong_phone TEXT,
+    ong_email TEXT,
+    ong_address TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- 5. TABELA DE PEDIDOS DE ACOLHIMENTO (FOSTER REQUESTS)
+-- 5. TABELA DE PEDIDOS DE ACOLHIMENTO E TRIAGEM
 CREATE TABLE IF NOT EXISTS public.foster_requests (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     pet_name TEXT NOT NULL,
     species TEXT NOT NULL,
+    size TEXT DEFAULT 'Médio',
     reason TEXT NOT NULL,
     timestamp TEXT,
     photo_url TEXT,
     requester_name TEXT,
+    requester_email TEXT,
     phone TEXT,
     status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'declined')),
+    accepted_by_ong_id TEXT,
+    accepted_by_ong_name TEXT,
+    accepted_by_ong_phone TEXT,
+    accepted_by_ong_email TEXT,
+    accepted_by_ong_address TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- 6. TABELA DE PARCEIROS (PARTNERS)
+-- 6. TABELA DE PARCEIROS (PATROCINADORES)
 CREATE TABLE IF NOT EXISTS public.partners (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
@@ -150,5 +160,5 @@ CREATE POLICY "Gerenciamento de Usuários" ON public.usuarios FOR ALL USING (tru
 CREATE POLICY "Gerenciamento de ONGs" ON public.ongs FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Gerenciamento de Pets" ON public.pets FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Gerenciamento de Parceiros" ON public.partners FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Gerenciamento de Solicitações" ON public.solicitacoes FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Gerenciamento de Solicitações" ON public.solicitations FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Gerenciamento de Acolhimentos" ON public.foster_requests FOR ALL USING (true) WITH CHECK (true);

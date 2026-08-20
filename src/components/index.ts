@@ -7,3 +7,4 @@ export * from './OngDashboardView';
 export * from './FosterFormView';
 export * from './AboutView';
 export * from './Modals';
+export * from './UserPortalViews';
