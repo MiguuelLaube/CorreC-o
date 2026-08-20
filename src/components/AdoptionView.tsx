@@ -4,6 +4,7 @@ import { PARTNERS_LIST } from '../data/initialData';
 
 interface AdoptionViewProps {
   pets: Pet[];
+  partners?: Partner[];
   onSelectPet: (pet: Pet) => void;
   onToggleFavorite: (petId: string) => void;
   onQueroAjudar: () => void;
@@ -13,6 +14,7 @@ interface AdoptionViewProps {
 
 export const AdoptionView: React.FC<AdoptionViewProps> = ({
   pets,
+  partners = PARTNERS_LIST,
   onSelectPet,
   onToggleFavorite,
   onQueroAjudar,
@@ -365,7 +367,7 @@ export const AdoptionView: React.FC<AdoptionViewProps> = ({
         <div className="relative w-full overflow-hidden py-4">
           <div className="carousel-track items-stretch gap-6 px-4">
             {/* First Sequence */}
-            {PARTNERS_LIST.map((partner) => (
+            {(partners && partners.length > 0 ? partners : PARTNERS_LIST).map((partner) => (
               <a
                 key={`p1-${partner.id}`}
                 href={partner.url || '#'}
@@ -433,7 +435,7 @@ export const AdoptionView: React.FC<AdoptionViewProps> = ({
             ))}
 
             {/* Duplicated Sequence for Seamless Infinite Scrolling */}
-            {PARTNERS_LIST.map((partner) => (
+            {(partners && partners.length > 0 ? partners : PARTNERS_LIST).map((partner) => (
               <a
                 key={`p2-${partner.id}`}
                 href={partner.url || '#'}

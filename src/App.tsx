@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Pet, ONG, Solicitation, FosterRequest, ActiveTab, User, OngSession } from './types';
-import { INITIAL_PETS, INITIAL_ONGS, INITIAL_SOLICITATIONS, INITIAL_FOSTER_REQUESTS } from './data/initialData';
+import { Pet, ONG, Solicitation, FosterRequest, ActiveTab, User, OngSession, Partner } from './types';
+import { INITIAL_PETS, INITIAL_ONGS, INITIAL_SOLICITATIONS, INITIAL_FOSTER_REQUESTS, PARTNERS_LIST } from './data/initialData';
 import { dbService } from './services/db';
 import { authService } from './services/authService';
 import {
@@ -35,6 +35,7 @@ export default function App() {
   const [ongs, setOngs] = useState<ONG[]>([]);
   const [solicitations, setSolicitations] = useState<Solicitation[]>([]);
   const [fosterRequests, setFosterRequests] = useState<FosterRequest[]>([]);
+  const [partners, setPartners] = useState<Partner[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
 
   // Carregar dados e inicializar banco
@@ -43,22 +44,25 @@ export default function App() {
       try {
         await authService.init();
 
-        const [loadedPets, loadedOngs, loadedSols, loadedFosters] = await Promise.all([
+        const [loadedPets, loadedOngs, loadedSols, loadedFosters, loadedPartners] = await Promise.all([
           dbService.getPets(),
           dbService.getOngs(),
           dbService.getSolicitations(),
-          dbService.getFosterRequests()
+          dbService.getFosterRequests(),
+          dbService.getPartners()
         ]);
         setPets(loadedPets);
         setOngs(loadedOngs);
         setSolicitations(loadedSols);
         setFosterRequests(loadedFosters);
+        setPartners(loadedPartners);
       } catch (err) {
         console.error('Erro ao carregar dados do MatchPet:', err);
         setPets(INITIAL_PETS);
         setOngs(INITIAL_ONGS);
         setSolicitations(INITIAL_SOLICITATIONS);
         setFosterRequests(INITIAL_FOSTER_REQUESTS);
+        setPartners(PARTNERS_LIST);
       } finally {
         setLoading(false);
       }
@@ -396,6 +400,7 @@ export default function App() {
               {activeTab === 'adotar' && (
                 <AdoptionView
                   pets={pets}
+                  partners={partners}
                   onSelectPet={(pet) => setSelectedPet(pet)}
                   onToggleFavorite={handleToggleFavorite}
                   onQueroAjudar={() => setActiveTab('acolhimento')}
@@ -468,6 +473,7 @@ export default function App() {
                     ongs={ongs}
                     pets={pets}
                     solicitations={solicitations}
+                    partners={partners}
                     onOngCreated={(newOng) => {
                       setOngs((prev) => [newOng, ...prev]);
                     }}
@@ -476,6 +482,17 @@ export default function App() {
                     }}
                     onDeleteOng={(ongId) => {
                       setOngs((prev) => prev.filter((o) => o.id !== ongId));
+                    }}
+                    onPartnerCreated={(newPartner) => {
+                      setPartners((prev) => [newPartner, ...prev]);
+                    }}
+                    onUpdatePartner={(updatedPartner) => {
+                      setPartners((prev) =>
+                        prev.map((p) => (p.id === updatedPartner.id ? updatedPartner : p))
+                      );
+                    }}
+                    onDeletePartner={(partnerId) => {
+                      setPartners((prev) => prev.filter((p) => p.id !== partnerId));
                     }}
                   />
                 ) : (

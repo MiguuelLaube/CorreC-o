@@ -8,8 +8,13 @@ const STORAGE_KEYS = {
   SOLICITATIONS: 'matchpet_solicitations_store_v2',
   FOSTER_REQUESTS: 'matchpet_foster_requests_store_v2',
   PARTNERS: 'matchpet_partners_store_v2',
-  INITIALIZED: 'matchpet_initialized_v3'
+  INITIALIZED: 'matchpet_initialized_v4'
 };
+
+// IDs de demonstração / genéricos padrão do sistema
+export const DEMO_PET_IDS = ['thor', 'caramelo', 'luna', 'bolinha', 'rex'];
+export const DEMO_SOL_IDS = ['sol-1', 'sol-2'];
+export const DEMO_FOSTER_IDS = ['foster-1'];
 
 // ==========================================
 // Helpers de Local Storage (Persistência Offline/Cache)
@@ -32,13 +37,36 @@ function setLocal<T>(key: string, value: T): void {
 }
 
 function ensureLocalInitialized(): void {
-  if (!localStorage.getItem(STORAGE_KEYS.INITIALIZED)) {
-    setLocal(STORAGE_KEYS.PETS, INITIAL_PETS);
-    setLocal(STORAGE_KEYS.ONGS, INITIAL_ONGS);
-    setLocal(STORAGE_KEYS.SOLICITATIONS, INITIAL_SOLICITATIONS);
-    setLocal(STORAGE_KEYS.FOSTER_REQUESTS, INITIAL_FOSTER_REQUESTS);
-    setLocal(STORAGE_KEYS.PARTNERS, PARTNERS_LIST);
-    localStorage.setItem(STORAGE_KEYS.INITIALIZED, 'true');
+  // Limpeza automática de dados de teste/demonstração prévios no cache local
+  try {
+    const currentPets = getLocal<Pet[]>(STORAGE_KEYS.PETS, []);
+    const filteredPets = currentPets.filter((p) => !DEMO_PET_IDS.includes(p.id));
+    if (filteredPets.length !== currentPets.length) {
+      setLocal(STORAGE_KEYS.PETS, filteredPets);
+    }
+
+    const currentSols = getLocal<Solicitation[]>(STORAGE_KEYS.SOLICITATIONS, []);
+    const filteredSols = currentSols.filter((s) => !DEMO_SOL_IDS.includes(s.id));
+    if (filteredSols.length !== currentSols.length) {
+      setLocal(STORAGE_KEYS.SOLICITATIONS, filteredSols);
+    }
+
+    const currentFosters = getLocal<FosterRequest[]>(STORAGE_KEYS.FOSTER_REQUESTS, []);
+    const filteredFosters = currentFosters.filter((f) => !DEMO_FOSTER_IDS.includes(f.id));
+    if (filteredFosters.length !== currentFosters.length) {
+      setLocal(STORAGE_KEYS.FOSTER_REQUESTS, filteredFosters);
+    }
+
+    if (!localStorage.getItem(STORAGE_KEYS.INITIALIZED)) {
+      setLocal(STORAGE_KEYS.PETS, filteredPets);
+      setLocal(STORAGE_KEYS.ONGS, INITIAL_ONGS);
+      setLocal(STORAGE_KEYS.SOLICITATIONS, filteredSols);
+      setLocal(STORAGE_KEYS.FOSTER_REQUESTS, filteredFosters);
+      setLocal(STORAGE_KEYS.PARTNERS, PARTNERS_LIST);
+      localStorage.setItem(STORAGE_KEYS.INITIALIZED, 'true');
+    }
+  } catch (e) {
+    console.warn('Erro ao inicializar localStorage:', e);
   }
 }
 
@@ -255,12 +283,10 @@ export const dbService = {
         }
         const { data, error } = await query;
 
-        if (!error && data && data.length > 0) {
-          allPets = data.map(mapPetFromSupabase);
-        } else if (!error && data && data.length === 0 && !filterOngId) {
-          const seeds = INITIAL_PETS.map(mapPetToSupabase);
-          await supabase.from('pets').upsert(seeds);
-          allPets = INITIAL_PETS;
+        if (!error && data) {
+          allPets = data
+            .map(mapPetFromSupabase)
+            .filter((p) => !DEMO_PET_IDS.includes(p.id));
         }
       } catch (err) {
         console.warn('Falha ao buscar pets no Supabase, usando local:', err);
@@ -268,7 +294,7 @@ export const dbService = {
     }
 
     if (allPets.length === 0) {
-      const local = getLocal<Pet[]>(STORAGE_KEYS.PETS, INITIAL_PETS);
+      const local = getLocal<Pet[]>(STORAGE_KEYS.PETS, []).filter((p) => !DEMO_PET_IDS.includes(p.id));
       allPets = filterOngId ? local.filter((p) => p.ongId === filterOngId) : local;
     }
 
@@ -276,7 +302,7 @@ export const dbService = {
   },
 
   async savePet(pet: Pet): Promise<Pet> {
-    const currentPets = getLocal<Pet[]>(STORAGE_KEYS.PETS, INITIAL_PETS);
+    const currentPets = getLocal<Pet[]>(STORAGE_KEYS.PETS, []).filter((p) => !DEMO_PET_IDS.includes(p.id));
     const existingIndex = currentPets.findIndex((p) => p.id === pet.id);
     let updatedPets: Pet[];
 
@@ -301,7 +327,7 @@ export const dbService = {
   },
 
   async deletePet(petId: string): Promise<void> {
-    const currentPets = getLocal<Pet[]>(STORAGE_KEYS.PETS, INITIAL_PETS);
+    const currentPets = getLocal<Pet[]>(STORAGE_KEYS.PETS, []).filter((p) => !DEMO_PET_IDS.includes(p.id));
     const updatedPets = currentPets.filter((p) => p.id !== petId);
     setLocal(STORAGE_KEYS.PETS, updatedPets);
 
@@ -315,7 +341,7 @@ export const dbService = {
   },
 
   async updatePetStatus(petId: string, status: 'Disponível' | 'Em Processo' | 'Adotado'): Promise<void> {
-    const currentPets = getLocal<Pet[]>(STORAGE_KEYS.PETS, INITIAL_PETS);
+    const currentPets = getLocal<Pet[]>(STORAGE_KEYS.PETS, []).filter((p) => !DEMO_PET_IDS.includes(p.id));
     const updatedPets = currentPets.map((p) => (p.id === petId ? { ...p, status } : p));
     setLocal(STORAGE_KEYS.PETS, updatedPets);
 
@@ -329,7 +355,7 @@ export const dbService = {
   },
 
   async toggleFavorite(petId: string): Promise<boolean> {
-    const currentPets = getLocal<Pet[]>(STORAGE_KEYS.PETS, INITIAL_PETS);
+    const currentPets = getLocal<Pet[]>(STORAGE_KEYS.PETS, []).filter((p) => !DEMO_PET_IDS.includes(p.id));
     let newFavState = false;
     const updatedPets = currentPets.map((p) => {
       if (p.id === petId) {
@@ -432,12 +458,10 @@ export const dbService = {
         }
         const { data, error } = await query;
 
-        if (!error && data && data.length > 0) {
-          all = data.map(mapSolicitationFromSupabase);
-        } else if (!error && data && data.length === 0 && !filterOngId && !filterUserEmail) {
-          const seeds = INITIAL_SOLICITATIONS.map(mapSolicitationToSupabase);
-          await supabase.from('solicitations').upsert(seeds);
-          all = INITIAL_SOLICITATIONS;
+        if (!error && data) {
+          all = data
+            .map(mapSolicitationFromSupabase)
+            .filter((s) => !DEMO_SOL_IDS.includes(s.id));
         }
       } catch (err) {
         console.warn('Falha ao buscar solicitações no Supabase:', err);
@@ -445,7 +469,7 @@ export const dbService = {
     }
 
     if (all.length === 0) {
-      const local = getLocal<Solicitation[]>(STORAGE_KEYS.SOLICITATIONS, INITIAL_SOLICITATIONS);
+      const local = getLocal<Solicitation[]>(STORAGE_KEYS.SOLICITATIONS, []).filter((s) => !DEMO_SOL_IDS.includes(s.id));
       all = local.filter((s) => {
         if (filterOngId && s.ongId !== filterOngId) return false;
         if (filterUserEmail && s.requesterEmail?.toLowerCase() !== filterUserEmail.toLowerCase()) return false;
@@ -457,7 +481,7 @@ export const dbService = {
   },
 
   async saveSolicitation(solicitation: Solicitation): Promise<Solicitation> {
-    const current = getLocal<Solicitation[]>(STORAGE_KEYS.SOLICITATIONS, INITIAL_SOLICITATIONS);
+    const current = getLocal<Solicitation[]>(STORAGE_KEYS.SOLICITATIONS, []).filter((s) => !DEMO_SOL_IDS.includes(s.id));
     const updated = [solicitation, ...current];
     setLocal(STORAGE_KEYS.SOLICITATIONS, updated);
 
@@ -478,7 +502,7 @@ export const dbService = {
     status: 'pending' | 'in_review' | 'approved' | 'rejected' | 'completed' | 'canceled',
     extraFields?: Partial<Solicitation>
   ): Promise<void> {
-    const current = getLocal<Solicitation[]>(STORAGE_KEYS.SOLICITATIONS, INITIAL_SOLICITATIONS);
+    const current = getLocal<Solicitation[]>(STORAGE_KEYS.SOLICITATIONS, []).filter((s) => !DEMO_SOL_IDS.includes(s.id));
     const updated = current.map((s) =>
       s.id === id
         ? {
@@ -509,7 +533,7 @@ export const dbService = {
   },
 
   async deleteSolicitation(id: string): Promise<void> {
-    const current = getLocal<Solicitation[]>(STORAGE_KEYS.SOLICITATIONS, INITIAL_SOLICITATIONS);
+    const current = getLocal<Solicitation[]>(STORAGE_KEYS.SOLICITATIONS, []).filter((s) => !DEMO_SOL_IDS.includes(s.id));
     const updated = current.filter((s) => s.id !== id);
     setLocal(STORAGE_KEYS.SOLICITATIONS, updated);
 
@@ -535,12 +559,10 @@ export const dbService = {
           .select('*')
           .order('created_at', { ascending: false });
 
-        if (!error && data && data.length > 0) {
-          all = data.map(mapFosterFromSupabase);
-        } else if (!error && data && data.length === 0 && !filterOngId && !filterUserEmail) {
-          const seeds = INITIAL_FOSTER_REQUESTS.map(mapFosterToSupabase);
-          await supabase.from('foster_requests').upsert(seeds);
-          all = INITIAL_FOSTER_REQUESTS;
+        if (!error && data) {
+          all = data
+            .map(mapFosterFromSupabase)
+            .filter((f) => !DEMO_FOSTER_IDS.includes(f.id));
         }
       } catch (err) {
         console.warn('Falha ao buscar acolhimentos no Supabase:', err);
@@ -548,7 +570,7 @@ export const dbService = {
     }
 
     if (all.length === 0) {
-      all = getLocal<FosterRequest[]>(STORAGE_KEYS.FOSTER_REQUESTS, INITIAL_FOSTER_REQUESTS);
+      all = getLocal<FosterRequest[]>(STORAGE_KEYS.FOSTER_REQUESTS, []).filter((f) => !DEMO_FOSTER_IDS.includes(f.id));
     }
 
     // Filtrar com segurança se especificado
@@ -563,7 +585,7 @@ export const dbService = {
   },
 
   async saveFosterRequest(foster: FosterRequest): Promise<FosterRequest> {
-    const current = getLocal<FosterRequest[]>(STORAGE_KEYS.FOSTER_REQUESTS, INITIAL_FOSTER_REQUESTS);
+    const current = getLocal<FosterRequest[]>(STORAGE_KEYS.FOSTER_REQUESTS, []).filter((f) => !DEMO_FOSTER_IDS.includes(f.id));
     const updated = [foster, ...current];
     setLocal(STORAGE_KEYS.FOSTER_REQUESTS, updated);
 
@@ -584,7 +606,7 @@ export const dbService = {
     status: 'accepted' | 'declined' | 'pending',
     ongInfo?: { id: string; name: string; phone: string; address: string }
   ): Promise<void> {
-    const current = getLocal<FosterRequest[]>(STORAGE_KEYS.FOSTER_REQUESTS, INITIAL_FOSTER_REQUESTS);
+    const current = getLocal<FosterRequest[]>(STORAGE_KEYS.FOSTER_REQUESTS, []).filter((f) => !DEMO_FOSTER_IDS.includes(f.id));
     const updated = current.map((f) =>
       f.id === id
         ? {
@@ -618,9 +640,85 @@ export const dbService = {
   },
 
   // ----------------------------------------
-  // PARCEIROS (PARTNERS)
+  // PARCEIROS E PROPAGANDAS (PARTNERS)
   // ----------------------------------------
   async getPartners(): Promise<Partner[]> {
-    return PARTNERS_LIST;
+    if (isSupabaseConfigured) {
+      try {
+        const { data, error } = await supabase
+          .from('parceiros')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (!error && data && data.length > 0) {
+          const mapped: Partner[] = data.map((row: any) => ({
+            id: String(row.id),
+            name: row.name || row.nome || '',
+            category: row.category || row.tipo || 'Parceiro',
+            tagline: row.tagline || row.descricao || '',
+            image: row.image || row.logo_url || 'https://images.unsplash.com/photo-1583511655857-d19b40a7a54e',
+            url: row.url || row.link_contato || '#',
+            badge: row.badge,
+            discountOrBenefit: row.discount_or_benefit || row.beneficio
+          }));
+          setLocal(STORAGE_KEYS.PARTNERS, mapped);
+          return mapped;
+        }
+      } catch (err) {
+        console.warn('Falha ao buscar parceiros no Supabase:', err);
+      }
+    }
+    return getLocal<Partner[]>(STORAGE_KEYS.PARTNERS, PARTNERS_LIST);
+  },
+
+  async savePartner(partner: Partner): Promise<Partner> {
+    const current = getLocal<Partner[]>(STORAGE_KEYS.PARTNERS, PARTNERS_LIST);
+    const existingIndex = current.findIndex((p) => p.id === partner.id);
+    let updated: Partner[];
+
+    if (existingIndex >= 0) {
+      updated = [...current];
+      updated[existingIndex] = partner;
+    } else {
+      updated = [partner, ...current];
+    }
+    setLocal(STORAGE_KEYS.PARTNERS, updated);
+
+    if (isSupabaseConfigured) {
+      try {
+        await supabase.from('parceiros').upsert({
+          id: partner.id,
+          nome: partner.name,
+          name: partner.name,
+          tipo: partner.category,
+          category: partner.category,
+          tagline: partner.tagline,
+          logo_url: partner.image,
+          image: partner.image,
+          link_contato: partner.url,
+          url: partner.url,
+          badge: partner.badge,
+          discount_or_benefit: partner.discountOrBenefit
+        });
+      } catch (err) {
+        console.warn('Falha ao sincronizar parceiro no Supabase:', err);
+      }
+    }
+
+    return partner;
+  },
+
+  async deletePartner(id: string): Promise<void> {
+    const current = getLocal<Partner[]>(STORAGE_KEYS.PARTNERS, PARTNERS_LIST);
+    const updated = current.filter((p) => p.id !== id);
+    setLocal(STORAGE_KEYS.PARTNERS, updated);
+
+    if (isSupabaseConfigured) {
+      try {
+        await supabase.from('parceiros').delete().eq('id', id);
+      } catch (err) {
+        console.warn('Falha ao excluir parceiro no Supabase:', err);
+      }
+    }
   }
 };
