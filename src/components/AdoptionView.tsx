@@ -289,24 +289,15 @@ export const AdoptionView: React.FC<AdoptionViewProps> = ({
 
                   {/* Badges / Chips */}
                   <div className="pt-3 flex flex-wrap gap-1.5 border-t border-[#e0e3e5]/60 mt-2">
-                    {pet.vaccination && (
-                      <span className="font-['Be_Vietnam_Pro'] text-xs font-semibold bg-[#a0efd6] text-[#196f5b] px-2.5 py-0.5 rounded-full">
-                        {pet.vaccination.toLowerCase().includes('completa') ? 'Vacinado' : pet.vaccination}
-                      </span>
-                    )}
-                    {pet.temperament.slice(0, 1).map((trait, idx) => (
-                      <span
-                        key={idx}
-                        className="font-['Be_Vietnam_Pro'] text-xs bg-[#e6e8ea] text-[#41474e] px-2.5 py-0.5 rounded-full font-medium"
-                      >
-                        {trait}
-                      </span>
-                    ))}
-                    {pet.castrated && (
-                      <span className="font-['Be_Vietnam_Pro'] text-xs bg-[#f2f4f6] text-[#126b57] px-2 py-0.5 rounded-full border border-[#a0efd6]">
-                        Castrado
-                      </span>
-                    )}
+                    <span className="font-['Be_Vietnam_Pro'] text-xs font-semibold bg-[#a0efd6] text-[#196f5b] px-2.5 py-0.5 rounded-full">
+                      {pet.vaccination?.toLowerCase().includes('completa') || pet.vaccination?.toLowerCase() === 'vacinado' ? 'Vacinado' : pet.vaccination || 'Vacinado'}
+                    </span>
+                    <span className="font-['Be_Vietnam_Pro'] text-xs bg-[#e6e8ea] text-[#41474e] px-2.5 py-0.5 rounded-full font-medium">
+                      Porte {pet.size}
+                    </span>
+                    <span className="font-['Be_Vietnam_Pro'] text-xs bg-[#f2f4f6] text-[#074469] px-2 py-0.5 rounded-full border border-[#074469]/20 font-medium">
+                      {pet.gender}
+                    </span>
                   </div>
                 </div>
               </article>

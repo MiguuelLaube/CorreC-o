@@ -401,7 +401,7 @@ export const UserPortalViews: React.FC<UserPortalProps> = ({
                         <div>
                           <div className="flex items-center gap-2 mb-1">
                             <span className="text-xs font-semibold text-[#72787f] font-['Be_Vietnam_Pro'] uppercase">
-                              Protocolo #{sol.id.slice(-6)}
+                              Protocolo #{String(sol.id || '000000').slice(-6)}
                             </span>
                           </div>
                           <h3 className="font-['Plus_Jakarta_Sans'] text-2xl font-bold text-[#074469]">
@@ -604,7 +604,7 @@ export const UserPortalViews: React.FC<UserPortalProps> = ({
                         />
                         <div>
                           <span className="text-xs text-[#72787f] font-semibold font-['Be_Vietnam_Pro'] uppercase">
-                            Triagem #{foster.id.slice(-6)} • {foster.timestamp}
+                            Triagem #{String(foster.id || '000000').slice(-6)} • {foster.timestamp}
                           </span>
                           <h3 className="font-['Plus_Jakarta_Sans'] text-2xl font-bold text-[#074469]">
                             {foster.petName || 'Animal em Avaliação'} ({foster.species})
