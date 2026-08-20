@@ -1,5 +1,6 @@
 -- ==============================================================================
 -- SCHEMA SUPABASE: PROJETO CORRENTECÃO (CORRE-C-O)
+-- Executável múltiplas vezes sem conflitos (Idempotente)
 -- ==============================================================================
 
 -- 1. TABELA DE ONGS
@@ -96,21 +97,28 @@ ALTER TABLE public.solicitations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.foster_requests ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.partners ENABLE ROW LEVEL SECURITY;
 
--- Políticas públicas de Leitura (Qualquer visitante pode ver pets, ongs e parceiros)
-CREATE POLICY "Leitura pública de ONGs" ON public.ongs FOR SELECT USING (true);
-CREATE POLICY "Leitura pública de Pets" ON public.pets FOR SELECT USING (true);
-CREATE POLICY "Leitura pública de Parceiros" ON public.partners FOR SELECT USING (true);
+-- Limpar policies antigas se existirem para evitar o erro 42710
+DROP POLICY IF EXISTS "Leitura pública de ONGs" ON public.ongs;
+DROP POLICY IF EXISTS "Gerenciamento de ONGs" ON public.ongs;
 
--- Políticas para Inserção pública (Qualquer usuário pode enviar solicitações e acolhimentos)
-CREATE POLICY "Criação pública de Solicitações" ON public.solicitations FOR INSERT WITH CHECK (true);
-CREATE POLICY "Criação pública de Acolhimentos" ON public.foster_requests FOR INSERT WITH CHECK (true);
+DROP POLICY IF EXISTS "Leitura pública de Pets" ON public.pets;
+DROP POLICY IF EXISTS "Gerenciamento de Pets" ON public.pets;
 
--- Leitura/Edição para ONGs / Painel administrativo
-CREATE POLICY "Leitura de Solicitações" ON public.solicitations FOR SELECT USING (true);
-CREATE POLICY "Atualização de Solicitações" ON public.solicitations FOR UPDATE USING (true);
+DROP POLICY IF EXISTS "Leitura pública de Parceiros" ON public.partners;
 
-CREATE POLICY "Leitura de Acolhimentos" ON public.foster_requests FOR SELECT USING (true);
-CREATE POLICY "Atualização de Acolhimentos" ON public.foster_requests FOR UPDATE USING (true);
+DROP POLICY IF EXISTS "Criação pública de Solicitações" ON public.solicitations;
+DROP POLICY IF EXISTS "Leitura de Solicitações" ON public.solicitations;
+DROP POLICY IF EXISTS "Atualização de Solicitações" ON public.solicitations;
+DROP POLICY IF EXISTS "Gerenciamento de Solicitações" ON public.solicitations;
 
-CREATE POLICY "Gerenciamento de Pets" ON public.pets FOR ALL USING (true);
-CREATE POLICY "Gerenciamento de ONGs" ON public.ongs FOR ALL USING (true);
+DROP POLICY IF EXISTS "Criação pública de Acolhimentos" ON public.foster_requests;
+DROP POLICY IF EXISTS "Leitura de Acolhimentos" ON public.foster_requests;
+DROP POLICY IF EXISTS "Atualização de Acolhimentos" ON public.foster_requests;
+DROP POLICY IF EXISTS "Gerenciamento de Acolhimentos" ON public.foster_requests;
+
+-- Criar políticas com acesso completo para a aplicação
+CREATE POLICY "Gerenciamento de ONGs" ON public.ongs FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Gerenciamento de Pets" ON public.pets FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Gerenciamento de Parceiros" ON public.partners FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Gerenciamento de Solicitações" ON public.solicitations FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Gerenciamento de Acolhimentos" ON public.foster_requests FOR ALL USING (true) WITH CHECK (true);

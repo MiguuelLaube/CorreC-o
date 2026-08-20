@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Pet, ONG, Solicitation, FosterRequest, ActiveTab } from './types';
 import { INITIAL_PETS, INITIAL_ONGS, INITIAL_SOLICITATIONS, INITIAL_FOSTER_REQUESTS } from './data/initialData';
+import { dbService } from './services/db';
+import { isSupabaseConfigured } from './lib/supabase';
 import {
   Navbar,
   Footer,
@@ -23,10 +25,38 @@ export default function App() {
   const [selectedPet, setSelectedPet] = useState<Pet | null>(null);
 
   // Core dynamic state
-  const [pets, setPets] = useState<Pet[]>(INITIAL_PETS);
-  const [ongs, setOngs] = useState<ONG[]>(INITIAL_ONGS);
-  const [solicitations, setSolicitations] = useState<Solicitation[]>(INITIAL_SOLICITATIONS);
-  const [fosterRequests, setFosterRequests] = useState<FosterRequest[]>(INITIAL_FOSTER_REQUESTS);
+  const [pets, setPets] = useState<Pet[]>([]);
+  const [ongs, setOngs] = useState<ONG[]>([]);
+  const [solicitations, setSolicitations] = useState<Solicitation[]>([]);
+  const [fosterRequests, setFosterRequests] = useState<FosterRequest[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+
+  // Carregar dados persistidos do Banco de Dados / Storage
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const [loadedPets, loadedOngs, loadedSols, loadedFosters] = await Promise.all([
+          dbService.getPets(),
+          dbService.getOngs(),
+          dbService.getSolicitations(),
+          dbService.getFosterRequests()
+        ]);
+        setPets(loadedPets);
+        setOngs(loadedOngs);
+        setSolicitations(loadedSols);
+        setFosterRequests(loadedFosters);
+      } catch (err) {
+        console.error('Erro ao carregar dados do banco:', err);
+        setPets(INITIAL_PETS);
+        setOngs(INITIAL_ONGS);
+        setSolicitations(INITIAL_SOLICITATIONS);
+        setFosterRequests(INITIAL_FOSTER_REQUESTS);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadData();
+  }, []);
 
   // Modals state
   const [petForInterestModal, setPetForInterestModal] = useState<Pet | null>(null);
@@ -43,24 +73,20 @@ export default function App() {
     setToastMessage(msg);
     setTimeout(() => {
       setToastMessage(null);
-    }, 3000);
+    }, 3500);
   };
 
   // Handlers
-  const handleToggleFavorite = (petId: string) => {
+  const handleToggleFavorite = async (petId: string) => {
+    const newFav = await dbService.toggleFavorite(petId);
     setPets((prev) =>
-      prev.map((p) => {
-        if (p.id === petId) {
-          const newFav = !p.favorite;
-          triggerToast(newFav ? `Adicionado aos favoritos: ${p.name}` : `Removido dos favoritos: ${p.name}`);
-          return { ...p, favorite: newFav };
-        }
-        return p;
-      })
+      prev.map((p) => (p.id === petId ? { ...p, favorite: newFav } : p))
     );
     if (selectedPet && selectedPet.id === petId) {
-      setSelectedPet((prev) => (prev ? { ...prev, favorite: !prev.favorite } : null));
+      setSelectedPet((prev) => (prev ? { ...prev, favorite: newFav } : null));
     }
+    const petName = pets.find((p) => p.id === petId)?.name || 'Pet';
+    triggerToast(newFav ? `Adicionado aos favoritos: ${petName}` : `Removido dos favoritos: ${petName}`);
   };
 
   const handleSelectPet = (pet: Pet) => {
@@ -72,7 +98,7 @@ export default function App() {
     setSelectedPet(null);
   };
 
-  const handleAddPet = (newPetData: Partial<Pet>) => {
+  const handleAddPet = async (newPetData: Partial<Pet>) => {
     const id = `pet-${Date.now()}`;
     const fullPet: Pet = {
       id,
@@ -102,26 +128,29 @@ export default function App() {
       favorite: false
     };
 
+    await dbService.savePet(fullPet);
     setPets((prev) => [fullPet, ...prev]);
-    triggerToast(`Pet ${fullPet.name} cadastrado com sucesso!`);
+    triggerToast(`Pet ${fullPet.name} salvo no banco de dados com sucesso!`);
   };
 
-  const handleDeletePet = (petId: string) => {
+  const handleDeletePet = async (petId: string) => {
+    await dbService.deletePet(petId);
     setPets((prev) => prev.filter((p) => p.id !== petId));
-    triggerToast('Pet removido do cadastro.');
+    triggerToast('Pet removido do banco de dados.');
   };
 
-  const handleUpdatePetStatus = (
+  const handleUpdatePetStatus = async (
     petId: string,
     status: 'Disponível' | 'Em Processo' | 'Adotado'
   ) => {
+    await dbService.updatePetStatus(petId, status);
     setPets((prev) =>
       prev.map((p) => (p.id === petId ? { ...p, status } : p))
     );
     triggerToast(`Status do pet atualizado para: ${status}`);
   };
 
-  const handleAdoptionInterestSubmit = (data: {
+  const handleAdoptionInterestSubmit = async (data: {
     name: string;
     phone: string;
     email: string;
@@ -142,11 +171,12 @@ export default function App() {
       email: data.email
     };
 
+    await dbService.saveSolicitation(newSolicitation);
     setSolicitations((prev) => [newSolicitation, ...prev]);
-    triggerToast(`Visita agendada para conhecer ${petForInterestModal.name}!`);
+    triggerToast(`Visita agendada e salva no banco para conhecer ${petForInterestModal.name}!`);
   };
 
-  const handleIndicarOngSubmit = (newOng: Partial<ONG>) => {
+  const handleIndicarOngSubmit = async (newOng: Partial<ONG>) => {
     const id = `ong-${Date.now()}`;
     const fullOng: ONG = {
       id,
@@ -161,11 +191,12 @@ export default function App() {
       petsCount: 12
     };
 
+    await dbService.saveOng(fullOng);
     setOngs((prev) => [...prev, fullOng]);
-    triggerToast(`ONG ${fullOng.name} cadastrada com sucesso!`);
+    triggerToast(`ONG ${fullOng.name} cadastrada e salva com sucesso!`);
   };
 
-  const handleFosterSubmit = (data: Omit<FosterRequest, 'id' | 'timestamp' | 'status'>) => {
+  const handleFosterSubmit = async (data: Omit<FosterRequest, 'id' | 'timestamp' | 'status'>) => {
     const newFoster: FosterRequest = {
       id: `foster-${Date.now()}`,
       petName: data.petName,
@@ -178,29 +209,33 @@ export default function App() {
       photoUrl: data.photoUrl
     };
 
+    await dbService.saveFosterRequest(newFoster);
     setFosterRequests((prev) => [newFoster, ...prev]);
-    triggerToast('Solicitação de acolhimento enviada para as ONGs parceiras!');
+    triggerToast('Solicitação de acolhimento gravada no banco de dados!');
   };
 
-  const handleApproveSolicitation = (id: string) => {
+  const handleApproveSolicitation = async (id: string) => {
+    await dbService.updateSolicitationStatus(id, 'approved');
     setSolicitations((prev) =>
       prev.map((s) => (s.id === id ? { ...s, status: 'approved' } : s))
     );
-    triggerToast('Solicitação aprovada com sucesso!');
+    triggerToast('Solicitação aprovada e atualizada no banco!');
   };
 
-  const handleRejectSolicitation = (id: string) => {
+  const handleRejectSolicitation = async (id: string) => {
+    await dbService.updateSolicitationStatus(id, 'rejected');
     setSolicitations((prev) =>
       prev.map((s) => (s.id === id ? { ...s, status: 'rejected' } : s))
     );
-    triggerToast('Solicitação recusada.');
+    triggerToast('Solicitação recusada e atualizada no banco.');
   };
 
-  const handleAcceptFoster = (id: string) => {
+  const handleAcceptFoster = async (id: string) => {
+    await dbService.updateFosterStatus(id, 'accepted');
     setFosterRequests((prev) =>
       prev.map((f) => (f.id === id ? { ...f, status: 'accepted' } : f))
     );
-    triggerToast('Acolhimento aceito pela ONG!');
+    triggerToast('Acolhimento aceito e salvo no banco!');
   };
 
   const favoritesCount = pets.filter((p) => p.favorite).length;
