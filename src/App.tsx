@@ -1,22 +1,22 @@
 import React, { useState } from 'react';
 import { Pet, ONG, Solicitation, FosterRequest, ActiveTab } from './types';
 import { INITIAL_PETS, INITIAL_ONGS, INITIAL_SOLICITATIONS, INITIAL_FOSTER_REQUESTS } from './data/initialData';
-import { Navbar } from './components/Navbar';
-import { Footer } from './components/Footer';
-import { AdoptionView } from './components/AdoptionView';
-import { OngsView } from './components/OngsView';
-import { PetDetailView } from './components/PetDetailView';
-import { OngDashboardView } from './components/OngDashboardView';
-import { FosterFormView } from './components/FosterFormView';
-import { AboutView } from './components/AboutView';
 import {
+  Navbar,
+  Footer,
+  AdoptionView,
+  OngsView,
+  PetDetailView,
+  OngDashboardView,
+  FosterFormView,
+  AboutView,
   AdoptionInterestModal,
   IndicarOngModal,
   AuthModal,
   ApoioPixModal,
   FosterDetailsModal,
-  ProfileAnalysisModal
-} from './components/Modals';
+  ProfileAnalysisModal,
+} from './components';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('adotar');
