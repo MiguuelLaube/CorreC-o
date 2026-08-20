@@ -468,6 +468,111 @@ export const authService = {
     return { success: true, ong: newOng };
   },
 
+  /**
+   * Atualização de ONG existente pelo Administrador
+   */
+  async updateOngByAdmin(data: {
+    id: string;
+    cnpj: string;
+    name: string;
+    email: string;
+    passwordPlain?: string;
+    phone: string;
+    address: string;
+    city: string;
+    state: string;
+    description: string;
+    image?: string;
+  }): Promise<{ success: boolean; ong?: ONG; error?: string }> {
+    const cnpj = data.cnpj.trim();
+    const name = data.name.trim();
+    const email = data.email.trim().toLowerCase();
+
+    if (!cnpj || !name || !email) {
+      return { success: false, error: 'CNPJ, Nome da ONG e E-mail são obrigatórios.' };
+    }
+
+    const localOngs = getStoredOngs();
+    const index = localOngs.findIndex((o) => o.id === data.id);
+
+    if (index < 0) {
+      return { success: false, error: 'ONG não encontrada para atualização.' };
+    }
+
+    let passwordHash = localOngs[index].passwordHash;
+    if (data.passwordPlain && data.passwordPlain.trim().length > 0) {
+      if (data.passwordPlain.trim().length < 6) {
+        return { success: false, error: 'A nova senha deve ter no mínimo 6 dígitos.' };
+      }
+      passwordHash = await hashPassword(data.passwordPlain.trim());
+    }
+
+    const updatedOng: ONG = {
+      ...localOngs[index],
+      cnpj,
+      name,
+      email,
+      passwordHash,
+      phone: data.phone.trim() || localOngs[index].phone,
+      address: data.address.trim() || localOngs[index].address,
+      city: data.city.trim() || localOngs[index].city,
+      state: data.state.trim() || localOngs[index].state,
+      description: data.description.trim() || localOngs[index].description,
+      image: data.image?.trim() || localOngs[index].image
+    };
+
+    localOngs[index] = updatedOng;
+    saveStoredOngs(localOngs);
+
+    if (isSupabaseConfigured) {
+      try {
+        const payload: any = {
+          id: updatedOng.id,
+          cnpj: updatedOng.cnpj,
+          name: updatedOng.name,
+          email: updatedOng.email,
+          phone: updatedOng.phone,
+          address: updatedOng.address,
+          city: updatedOng.city,
+          state: updatedOng.state,
+          description: updatedOng.description,
+          image: updatedOng.image
+        };
+        if (passwordHash) {
+          payload.senha_hash = passwordHash;
+        }
+
+        await withTimeout(
+          supabase.from('ongs').upsert(payload),
+          3000
+        );
+      } catch (err) {
+        console.error('Erro ao sincronizar atualização da ONG no Supabase:', err);
+      }
+    }
+
+    return { success: true, ong: updatedOng };
+  },
+
+  /**
+   * Exclusão de ONG pelo Administrador
+   */
+  async deleteOngByAdmin(id: string): Promise<{ success: boolean; error?: string }> {
+    const localOngs = getStoredOngs();
+    const filtered = localOngs.filter((o) => o.id !== id);
+    saveStoredOngs(filtered);
+
+    if (isSupabaseConfigured) {
+      try {
+        await withTimeout(supabase.from('ongs').delete().eq('id', id), 3000);
+      } catch (err) {
+        console.error('Erro ao remover ONG do Supabase:', err);
+      }
+    }
+
+    return { success: true };
+  },
+
   logoutOng(): void {
     localStorage.removeItem(ONG_SESSION_KEY);
   }

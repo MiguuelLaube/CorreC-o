@@ -446,6 +446,12 @@ export default function App() {
                     onOngCreated={(newOng) => {
                       setOngs((prev) => [newOng, ...prev]);
                     }}
+                    onUpdateOng={(updatedOng) => {
+                      setOngs((prev) => prev.map((o) => (o.id === updatedOng.id ? updatedOng : o)));
+                    }}
+                    onDeleteOng={(ongId) => {
+                      setOngs((prev) => prev.filter((o) => o.id !== ongId));
+                    }}
                   />
                 ) : (
                   <div className="flex-grow flex items-center justify-center min-h-[60vh] px-4">

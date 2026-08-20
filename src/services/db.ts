@@ -386,6 +386,20 @@ export const dbService = {
     return ong;
   },
 
+  async deleteOng(id: string): Promise<void> {
+    const currentOngs = getLocal<ONG[]>(STORAGE_KEYS.ONGS, INITIAL_ONGS);
+    const updatedOngs = currentOngs.filter((o) => o.id !== id);
+    setLocal(STORAGE_KEYS.ONGS, updatedOngs);
+
+    if (isSupabaseConfigured) {
+      try {
+        await supabase.from('ongs').delete().eq('id', id);
+      } catch (err) {
+        console.error('Erro ao deletar ONG no Supabase:', err);
+      }
+    }
+  },
+
   // ----------------------------------------
   // SOLICITAÇÕES (ISOLAMENTO POR ONG OU ADOTANTE)
   // ----------------------------------------
