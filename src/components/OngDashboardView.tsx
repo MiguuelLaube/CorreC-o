@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Pet, Solicitation, FosterRequest } from '../types';
+import { Pet, Solicitation, FosterRequest, OngSession } from '../types';
 
 interface OngDashboardViewProps {
+  currentOng: OngSession;
   pets: Pet[];
   solicitations: Solicitation[];
   fosterRequests: FosterRequest[];
@@ -10,12 +11,13 @@ interface OngDashboardViewProps {
   onUpdatePetStatus: (petId: string, status: 'Disponível' | 'Em Processo' | 'Adotado') => void;
   onApproveSolicitation: (id: string) => void;
   onRejectSolicitation: (id: string) => void;
-  onAcceptFoster: (id: string) => void;
+  onAcceptFoster: (id: string, ongInfo: OngSession) => void;
   onOpenFosterDetails: (foster: FosterRequest) => void;
   onOpenSolicitationProfile: (sol: Solicitation) => void;
 }
 
 export const OngDashboardView: React.FC<OngDashboardViewProps> = ({
+  currentOng,
   pets,
   solicitations,
   fosterRequests,
@@ -30,18 +32,25 @@ export const OngDashboardView: React.FC<OngDashboardViewProps> = ({
 }) => {
   const [showAddForm, setShowAddForm] = useState<boolean>(false);
 
-  // Apenas as 6 informações exigidas para criação de cadastro de pets:
-  // 1. Nome do pet
+  // Isolamento estrito de dados: Apenas os pets pertencentes a esta ONG
+  const myPets = pets.filter((p) => p.ongId === currentOng.id || p.ongName?.toLowerCase() === currentOng.name?.toLowerCase());
+
+  // Solicitações recebidas exclusivamente para os pets desta ONG
+  const mySolicitations = solicitations.filter(
+    (s) => s.ongId === currentOng.id || s.ongName?.toLowerCase() === currentOng.name?.toLowerCase()
+  );
+
+  // Triagens aceitas por esta ONG ou abertas
+  const myFosters = fosterRequests.filter(
+    (f) => f.acceptedByOngId === currentOng.id || f.status === 'pending'
+  );
+
+  // Formulário: Apenas as 6 informações de cadastro de pet
   const [newPetName, setNewPetName] = useState('');
-  // 2. Idade
   const [newPetAge, setNewPetAge] = useState('');
-  // 3. Porte
   const [newPetSize, setNewPetSize] = useState<'Pequeno' | 'Médio' | 'Grande'>('Médio');
-  // 4. Gênero
   const [newPetGender, setNewPetGender] = useState<'Macho' | 'Fêmea'>('Macho');
-  // 5. Vacinado (caixa de marcação / checkbox)
   const [newPetVaccinated, setNewPetVaccinated] = useState<boolean>(true);
-  // 6. Fotos do pet (URL da imagem principal)
   const [newPetImageUrl, setNewPetImageUrl] = useState('');
 
   const [filterTable, setFilterTable] = useState<'all' | 'Disponível' | 'Em Processo'>('all');
@@ -61,15 +70,14 @@ export const OngDashboardView: React.FC<OngDashboardViewProps> = ({
         'https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&w=600&q=80',
       galleryImages: [],
       species: 'Cachorro',
-      city: 'São Paulo',
-      state: 'SP',
+      city: currentOng.city || 'São Paulo',
+      state: currentOng.state || 'SP',
       entryDate: new Date().toLocaleDateString('pt-BR'),
       status: 'Disponível',
-      ongId: 'amigos-de-patas',
-      ongName: 'ONG Amigo Fiel'
+      ongId: currentOng.id,
+      ongName: currentOng.name
     });
 
-    // Reset form
     setNewPetName('');
     setNewPetAge('');
     setNewPetSize('Médio');
@@ -79,106 +87,94 @@ export const OngDashboardView: React.FC<OngDashboardViewProps> = ({
     setShowAddForm(false);
   };
 
-  const displayedPets = pets.filter((p) => {
+  const displayedPets = myPets.filter((p) => {
     if (filterTable === 'all') return true;
     return p.status === filterTable;
   });
 
   return (
     <main className="flex-grow pt-8 pb-20 px-4 md:px-16 max-w-7xl mx-auto w-full">
-      {/* Header */}
-      <header className="mb-8">
-        <div className="flex items-center gap-2 mb-1">
-          <span className="bg-[#074469] text-[#a0efd6] text-[11px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full">
-            Painel da ONG
-          </span>
-          <span className="text-xs text-[#72787f]">Área Administrativa</span>
+      {/* Header com Dados da ONG Logada */}
+      <header className="mb-8 bg-white p-6 sm:p-8 rounded-3xl border border-[#e0e3e5] shadow-xs">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="flex items-center gap-4">
+            <img
+              src={currentOng.image || 'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?auto=format&fit=crop&w=800&q=80'}
+              alt={currentOng.name}
+              className="w-16 h-16 rounded-2xl object-cover border border-[#e0e3e5] shadow-2xs shrink-0"
+            />
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="bg-[#126b57] text-[#a0efd6] text-[11px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full">
+                  Painel de Gestão da ONG
+                </span>
+                <span className="text-xs text-[#72787f]">Ambiente Isolado</span>
+              </div>
+              <h1 className="font-['Plus_Jakarta_Sans'] text-2xl sm:text-3xl font-bold text-[#074469]">
+                {currentOng.name}
+              </h1>
+              <p className="font-['Be_Vietnam_Pro'] text-xs sm:text-sm text-[#41474e] mt-0.5">
+                CNPJ: <strong>{currentOng.cnpj || '12.345.678/0001-90'}</strong> • {currentOng.city}, {currentOng.state} • {currentOng.email}
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={() => setShowAddForm(true)}
+            className="bg-[#074469] hover:bg-[#2a5c82] text-white font-['Be_Vietnam_Pro'] text-xs sm:text-sm font-bold px-5 py-3 rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 cursor-pointer shrink-0"
+          >
+            <span className="material-symbols-outlined text-lg">add_circle</span>
+            <span>Cadastrar Novo Pet</span>
+          </button>
         </div>
-        <h1 className="font-['Plus_Jakarta_Sans'] text-3xl md:text-5xl font-bold text-[#074469] mb-2">
-          Painel de Gestão
-        </h1>
-        <p className="font-['Be_Vietnam_Pro'] text-base md:text-lg text-[#41474e]">
-          Visão geral e controle de cadastros, adoções e triagens da sua ONG.
-        </p>
       </header>
 
-      {/* Bento Grid: Stats & Quick Action */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-        {/* Stat Card 1 */}
-        <div className="bg-white rounded-2xl p-6 shadow-xs border border-[#e0e3e5] flex flex-col justify-between">
-          <div className="flex justify-between items-start mb-4">
+      {/* Grid de Estatísticas Exclusivas desta ONG */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-10">
+        <div className="bg-white rounded-2xl p-6 shadow-xs border border-[#e0e3e5]">
+          <div className="flex justify-between items-start mb-2">
             <span className="material-symbols-outlined text-[#074469] text-3xl">pets</span>
-            <span className="bg-[#a0efd6] text-[#196f5b] font-['Be_Vietnam_Pro'] text-xs font-semibold px-2.5 py-1 rounded-full">
-              +5 esta semana
+            <span className="bg-[#a0efd6] text-[#126b57] text-xs font-bold px-2.5 py-0.5 rounded-full">
+              Seus Pets
             </span>
           </div>
-          <div>
-            <h3 className="font-['Be_Vietnam_Pro'] text-sm text-[#41474e] mb-1">Total de Pets</h3>
-            <p className="font-['Plus_Jakarta_Sans'] text-3xl md:text-4xl font-bold text-[#074469]">
-              {pets.length}
-            </p>
-          </div>
+          <h3 className="font-['Be_Vietnam_Pro'] text-xs text-[#72787f] uppercase font-semibold">Total sob sua Tutela</h3>
+          <p className="font-['Plus_Jakarta_Sans'] text-3xl font-bold text-[#074469] mt-1">{myPets.length}</p>
         </div>
 
-        {/* Stat Card 2 */}
-        <div className="bg-white rounded-2xl p-6 shadow-xs border border-[#e0e3e5] flex flex-col justify-between">
-          <div className="flex justify-between items-start mb-4">
-            <span className="material-symbols-outlined text-[#126b57] text-3xl">volunteer_activism</span>
-            <span className="bg-[#ffdbc9] text-[#331200] font-['Be_Vietnam_Pro'] text-xs font-semibold px-2.5 py-1 rounded-full">
-              Finalizadas
+        <div className="bg-white rounded-2xl p-6 shadow-xs border border-[#e0e3e5]">
+          <div className="flex justify-between items-start mb-2">
+            <span className="material-symbols-outlined text-[#126b57] text-3xl">task_alt</span>
+            <span className="bg-[#ffdbc9] text-[#6d2f00] text-xs font-bold px-2.5 py-0.5 rounded-full">
+              Aprovadas
             </span>
           </div>
-          <div>
-            <h3 className="font-['Be_Vietnam_Pro'] text-sm text-[#41474e] mb-1">Adoções Concedidas</h3>
-            <p className="font-['Plus_Jakarta_Sans'] text-3xl md:text-4xl font-bold text-[#074469]">
-              {solicitations.filter((s) => s.status === 'approved').length}
-            </p>
-          </div>
+          <h3 className="font-['Be_Vietnam_Pro'] text-xs text-[#72787f] uppercase font-semibold">Adoções Concedidas</h3>
+          <p className="font-['Plus_Jakarta_Sans'] text-3xl font-bold text-[#126b57] mt-1">
+            {mySolicitations.filter((s) => s.status === 'approved').length}
+          </p>
         </div>
 
-        {/* Stat Card 3 */}
-        <div className="bg-white rounded-2xl p-6 shadow-xs border border-[#e0e3e5] flex flex-col justify-between">
-          <div className="flex justify-between items-start mb-4">
+        <div className="bg-white rounded-2xl p-6 shadow-xs border border-[#e0e3e5]">
+          <div className="flex justify-between items-start mb-2">
             <span className="material-symbols-outlined text-[#914100] text-3xl">mail</span>
-            <span className="bg-[#ffdad6] text-[#93000a] font-['Be_Vietnam_Pro'] text-xs font-bold px-2.5 py-1 rounded-full">
-              Pendentes
+            <span className="bg-[#ffdad6] text-[#93000a] text-xs font-bold px-2.5 py-0.5 rounded-full">
+              Novas
             </span>
           </div>
-          <div>
-            <h3 className="font-['Be_Vietnam_Pro'] text-sm text-[#41474e] mb-1">Solicitações Recebidas</h3>
-            <p className="font-['Plus_Jakarta_Sans'] text-3xl md:text-4xl font-bold text-[#074469]">
-              {solicitations.length}
-            </p>
-          </div>
+          <h3 className="font-['Be_Vietnam_Pro'] text-xs text-[#72787f] uppercase font-semibold">Solicitações Recebidas</h3>
+          <p className="font-['Plus_Jakarta_Sans'] text-3xl font-bold text-[#914100] mt-1">{mySolicitations.length}</p>
         </div>
-
-        {/* Action Card Button (Cadastrar Novo Pet) */}
-        {!showAddForm && (
-          <div
-            onClick={() => setShowAddForm(true)}
-            className="bg-[#074469] hover:bg-[#2a5c82] rounded-2xl p-6 shadow-xs flex flex-col justify-center items-center text-center cursor-pointer transition-all group border border-[#074469]"
-          >
-            <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-              <span className="material-symbols-outlined text-white text-3xl">add_circle</span>
-            </div>
-            <h3 className="font-['Plus_Jakarta_Sans'] text-xl font-bold text-white">
-              Cadastrar Novo Pet
-            </h3>
-            <p className="font-['Be_Vietnam_Pro'] text-xs text-[#a5d4ff] mt-1">
-              Abrir formulário de 6 campos
-            </p>
-          </div>
-        )}
       </div>
 
-      {/* FORMULÁRIO DE CRIAÇÃO DE CADASTRO DE PETS: APENAS OS 6 CAMPOS ESPECIFICADOS */}
+      {/* FORMULÁRIO DE CADASTRO DE PETS (6 CAMPOS) */}
       {showAddForm && (
         <section className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-[#074469] mb-12 animate-in fade-in slide-in-from-top duration-300">
           <div className="flex justify-between items-center mb-2">
             <div className="flex items-center gap-2">
               <span className="material-symbols-outlined text-[#074469] text-2xl">add_circle</span>
               <h2 className="font-['Plus_Jakarta_Sans'] text-2xl font-bold text-[#074469]">
-                Cadastro de Novo Pet
+                Cadastrar Pet sob tutela da {currentOng.name}
               </h2>
             </div>
             <button
@@ -190,7 +186,7 @@ export const OngDashboardView: React.FC<OngDashboardViewProps> = ({
           </div>
 
           <p className="text-xs font-['Be_Vietnam_Pro'] text-[#41474e] mb-6">
-            Preencha as informações essenciais do animalzinho para disponibilizá-lo na vitrine.
+            O pet será vinculado automaticamente à sua ONG e ficará visível no seu perfil público e na vitrine do MatchPet.
           </p>
 
           <form onSubmit={handleSavePet} className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -255,20 +251,20 @@ export const OngDashboardView: React.FC<OngDashboardViewProps> = ({
               </select>
             </div>
 
-            {/* 5. Vacinado (Caixa de marcação / Checkbox) */}
+            {/* 5. Vacinado (Checkbox) */}
             <div className="flex items-center gap-3 p-3.5 bg-[#f7f9fb] rounded-xl border border-[#c1c7cf]/60 md:col-span-2">
               <input
                 type="checkbox"
-                id="petVaccinatedCheck"
+                id="petVaccinatedCheckOng"
                 checked={newPetVaccinated}
                 onChange={(e) => setNewPetVaccinated(e.target.checked)}
                 className="w-5 h-5 accent-[#074469] rounded cursor-pointer"
               />
               <label
-                htmlFor="petVaccinatedCheck"
+                htmlFor="petVaccinatedCheckOng"
                 className="font-['Be_Vietnam_Pro'] text-sm font-semibold text-[#191c1e] cursor-pointer"
               >
-                Animal Vacinado (Vacinação em dia / Carteira de vacinação confirmada)
+                Animal Vacinado (Vacinação completa e atualizada)
               </label>
             </div>
 
@@ -297,7 +293,7 @@ export const OngDashboardView: React.FC<OngDashboardViewProps> = ({
                     }}
                   />
                   <span className="text-xs text-[#126b57] font-semibold">
-                    Pré-visualização da foto carregada
+                    Pré-visualização da imagem
                   </span>
                 </div>
               )}
@@ -322,45 +318,33 @@ export const OngDashboardView: React.FC<OngDashboardViewProps> = ({
         </section>
       )}
 
-      {/* Main 2-Column Section */}
+      {/* Grid Principal: Pets & Triagens vs Solicitações */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Main Column: Pet List & Triagem (2 cols) */}
+        {/* Coluna Principal (2 cols) */}
         <div className="lg:col-span-2 space-y-10">
-          {/* Section: Pets Cadastrados */}
-          <section>
+          {/* Tabela de Pets desta ONG */}
+          <section className="bg-white rounded-3xl p-6 shadow-xs border border-[#e0e3e5]">
             <div className="flex justify-between items-center mb-4">
               <div className="flex items-center gap-3">
-                <h2 className="font-['Plus_Jakarta_Sans'] text-2xl font-bold text-[#074469]">
-                  Pets Cadastrados
+                <h2 className="font-['Plus_Jakarta_Sans'] text-xl sm:text-2xl font-bold text-[#074469]">
+                  Seus Pets Cadastrados
                 </h2>
-                <div className="hidden sm:flex gap-1 bg-[#eceef0] p-1 rounded-lg text-xs font-['Be_Vietnam_Pro']">
+                <div className="flex gap-1 bg-[#eceef0] p-1 rounded-lg text-xs font-['Be_Vietnam_Pro']">
                   <button
                     onClick={() => setFilterTable('all')}
                     className={`px-2.5 py-1 rounded-md transition-colors cursor-pointer ${
                       filterTable === 'all' ? 'bg-white font-semibold shadow-xs text-[#074469]' : 'text-[#72787f]'
                     }`}
                   >
-                    Todos ({pets.length})
+                    Todos ({myPets.length})
                   </button>
                   <button
                     onClick={() => setFilterTable('Disponível')}
                     className={`px-2.5 py-1 rounded-md transition-colors cursor-pointer ${
-                      filterTable === 'Disponível'
-                        ? 'bg-white font-semibold shadow-xs text-[#126b57]'
-                        : 'text-[#72787f]'
+                      filterTable === 'Disponível' ? 'bg-white font-semibold shadow-xs text-[#126b57]' : 'text-[#72787f]'
                     }`}
                   >
                     Disponíveis
-                  </button>
-                  <button
-                    onClick={() => setFilterTable('Em Processo')}
-                    className={`px-2.5 py-1 rounded-md transition-colors cursor-pointer ${
-                      filterTable === 'Em Processo'
-                        ? 'bg-white font-semibold shadow-xs text-[#41474e]'
-                        : 'text-[#72787f]'
-                    }`}
-                  >
-                    Em Processo
                   </button>
                 </div>
               </div>
@@ -370,11 +354,22 @@ export const OngDashboardView: React.FC<OngDashboardViewProps> = ({
                 className="font-['Be_Vietnam_Pro'] text-xs sm:text-sm font-semibold text-[#126b57] hover:underline flex items-center gap-1 cursor-pointer"
               >
                 <span>+ Novo Pet</span>
-                <span className="material-symbols-outlined text-sm">arrow_forward</span>
               </button>
             </div>
 
-            <div className="bg-white rounded-2xl shadow-xs border border-[#e0e3e5] overflow-hidden">
+            {displayedPets.length === 0 ? (
+              <div className="text-center py-10">
+                <p className="text-sm text-[#72787f] font-['Be_Vietnam_Pro'] mb-3">
+                  Nenhum pet cadastrado sob a tutela de {currentOng.name} ainda.
+                </p>
+                <button
+                  onClick={() => setShowAddForm(true)}
+                  className="bg-[#074469] text-white font-bold text-xs px-4 py-2 rounded-xl"
+                >
+                  Cadastrar Primeiro Pet
+                </button>
+              </div>
+            ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse font-['Be_Vietnam_Pro']">
                   <thead>
@@ -409,7 +404,7 @@ export const OngDashboardView: React.FC<OngDashboardViewProps> = ({
 
                         <td className="p-4">
                           <span className="bg-[#a0efd6] text-[#126b57] text-xs font-semibold px-2 py-0.5 rounded-md">
-                            {pet.vaccination === 'Vacinado' || pet.vaccination === 'Sim' ? 'Vacinado ✓' : pet.vaccination}
+                            {pet.vaccination === 'Vacinado' ? 'Vacinado ✓' : pet.vaccination}
                           </span>
                         </td>
 
@@ -424,7 +419,7 @@ export const OngDashboardView: React.FC<OngDashboardViewProps> = ({
                             title="Clique para alternar o status"
                             className={`px-3 py-1 rounded-full text-xs font-semibold cursor-pointer transition-colors ${
                               pet.status === 'Disponível'
-                                ? 'bg-[#a0efd6] text-[#196f5b] hover:bg-[#87d5bd]'
+                                ? 'bg-[#a0efd6] text-[#126b57] hover:bg-[#87d5bd]'
                                 : 'bg-[#e0e3e5] text-[#41474e] hover:bg-[#d8dadc]'
                             }`}
                           >
@@ -465,30 +460,35 @@ export const OngDashboardView: React.FC<OngDashboardViewProps> = ({
                   </tbody>
                 </table>
               </div>
-            </div>
+            )}
           </section>
 
-          {/* Section: Triagem de Acolhimento */}
-          <section>
+          {/* Seção: Triagem de Acolhimento */}
+          <section className="bg-white rounded-3xl p-6 shadow-xs border border-[#e0e3e5]">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="font-['Plus_Jakarta_Sans'] text-2xl font-bold text-[#074469]">
-                Triagem de Acolhimento
-              </h2>
-              <span className="text-xs text-[#72787f] font-semibold">
-                {fosterRequests.filter((f) => f.status === 'pending').length} solicitações aguardando
+              <div>
+                <h2 className="font-['Plus_Jakarta_Sans'] text-xl sm:text-2xl font-bold text-[#074469]">
+                  Triagem & Acolhimentos
+                </h2>
+                <p className="font-['Be_Vietnam_Pro'] text-xs text-[#72787f]">
+                  Solicitações de acolhimento de animais para a rede de ONGs.
+                </p>
+              </div>
+              <span className="text-xs text-[#126b57] font-bold bg-[#a0efd6]/60 px-2.5 py-1 rounded-full">
+                {myFosters.length} pedidos
               </span>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {fosterRequests.map((req) => (
+              {myFosters.map((req) => (
                 <div
                   key={req.id}
-                  className="bg-white rounded-2xl p-5 shadow-xs border border-[#e0e3e5] flex flex-col justify-between"
+                  className="bg-[#f7f9fb] rounded-2xl p-5 shadow-2xs border border-[#e0e3e5] flex flex-col justify-between"
                 >
                   <div>
                     <div className="flex justify-between items-start mb-3">
                       <span className="bg-[#ffdbc9] text-[#331200] px-2.5 py-0.5 rounded-full text-xs font-semibold font-['Be_Vietnam_Pro']">
-                        Triagem de Acolhimento
+                        Triagem
                       </span>
                       <span className="text-xs text-[#72787f]">{req.timestamp}</span>
                     </div>
@@ -504,19 +504,21 @@ export const OngDashboardView: React.FC<OngDashboardViewProps> = ({
                   <div className="mt-auto flex gap-2 pt-2 border-t border-[#e0e3e5]/60">
                     <button
                       onClick={() => onOpenFosterDetails(req)}
-                      className="flex-1 bg-[#eceef0] hover:bg-[#e0e3e5] text-[#191c1e] font-['Be_Vietnam_Pro'] text-xs font-semibold py-2 rounded-lg transition-colors cursor-pointer"
+                      className="flex-1 bg-white hover:bg-[#e0e3e5] text-[#191c1e] font-['Be_Vietnam_Pro'] text-xs font-semibold py-2 rounded-lg transition-colors border border-[#e0e3e5] cursor-pointer"
                     >
                       Detalhes
                     </button>
                     <button
-                      onClick={() => onAcceptFoster(req.id)}
+                      onClick={() => onAcceptFoster(req.id, currentOng)}
                       className={`flex-1 font-['Be_Vietnam_Pro'] text-xs font-semibold py-2 rounded-lg transition-colors cursor-pointer ${
-                        req.status === 'accepted'
-                          ? 'bg-[#a0efd6] text-[#196f5b]'
+                        req.status === 'accepted' && req.acceptedByOngId === currentOng.id
+                          ? 'bg-[#a0efd6] text-[#126b57]'
                           : 'bg-[#126b57] text-white hover:bg-[#005141]'
                       }`}
                     >
-                      {req.status === 'accepted' ? 'Aceito ✓' : 'Aceitar Acolhimento'}
+                      {req.status === 'accepted' && req.acceptedByOngId === currentOng.id
+                        ? 'Acolhido por Você ✓'
+                        : 'Aceitar Acolhimento'}
                     </button>
                   </div>
                 </div>
@@ -525,80 +527,78 @@ export const OngDashboardView: React.FC<OngDashboardViewProps> = ({
           </section>
         </div>
 
-        {/* Sidebar: Solicitações de Adoção (1 col) */}
+        {/* Sidebar: Solicitações Recebidas para os Pets desta ONG */}
         <div className="lg:col-span-1">
-          <div className="bg-[#f2f4f6] rounded-2xl p-6 shadow-xs border border-[#e0e3e5] h-full flex flex-col">
-            <h2 className="font-['Plus_Jakarta_Sans'] text-2xl font-bold text-[#074469] mb-6 flex items-center gap-2">
+          <div className="bg-white rounded-3xl p-6 shadow-xs border border-[#e0e3e5] h-full flex flex-col">
+            <h2 className="font-['Plus_Jakarta_Sans'] text-xl font-bold text-[#074469] mb-4 flex items-center gap-2">
               <span className="material-symbols-outlined text-[#126b57]">inbox</span>
-              <span>Solicitações</span>
+              <span>Solicitações de Adoção ({mySolicitations.length})</span>
             </h2>
 
-            <div className="space-y-4">
-              {solicitations.map((sol) => (
-                <div
-                  key={sol.id}
-                  className="bg-white rounded-xl p-4 border border-[#e0e3e5] relative overflow-hidden shadow-xs"
-                >
+            {mySolicitations.length === 0 ? (
+              <div className="my-auto text-center py-10">
+                <span className="material-symbols-outlined text-[#c1c7cf] text-4xl mb-2">mark_email_unread</span>
+                <p className="text-xs font-['Be_Vietnam_Pro'] text-[#72787f]">
+                  Nenhuma solicitação para os seus pets no momento.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {mySolicitations.map((sol) => (
                   <div
-                    className={`absolute top-0 left-0 w-1.5 h-full ${
-                      sol.type === 'Visita' ? 'bg-[#126b57]' : 'bg-[#914100]'
-                    }`}
-                  />
+                    key={sol.id}
+                    className="bg-[#f7f9fb] rounded-xl p-4 border border-[#e0e3e5] relative overflow-hidden shadow-2xs"
+                  >
+                    <div
+                      className={`absolute top-0 left-0 w-1.5 h-full ${
+                        sol.type === 'Visita' ? 'bg-[#126b57]' : 'bg-[#914100]'
+                      }`}
+                    />
 
-                  <div className="ml-2">
-                    <div className="flex justify-between items-center mb-1">
-                      <p className="font-['Plus_Jakarta_Sans'] text-sm text-[#074469] font-bold">
-                        {sol.type}: {sol.petName}
-                      </p>
-                      {sol.status === 'approved' && (
-                        <span className="text-[11px] font-bold text-[#196f5b] bg-[#a0efd6] px-2 py-0.5 rounded-full">
-                          Aprovada
-                        </span>
-                      )}
-                      {sol.status === 'rejected' && (
-                        <span className="text-[11px] font-bold text-[#ba1a1a] bg-[#ffdad6] px-2 py-0.5 rounded-full">
-                          Recusada
-                        </span>
-                      )}
-                    </div>
-
-                    <p className="font-['Be_Vietnam_Pro'] text-xs text-[#41474e] mb-3 leading-relaxed">
-                      Por: <span className="font-semibold">{sol.requesterName}</span>
-                      <br />
-                      {sol.type === 'Visita' ? `Para: ${sol.dateOrDetails}` : sol.dateOrDetails}
-                    </p>
-
-                    {sol.status === 'pending' && (
-                      <div className="flex gap-2">
-                        {sol.type === 'Visita' ? (
-                          <>
-                            <button
-                              onClick={() => onApproveSolicitation(sol.id)}
-                              className="flex-1 text-[#126b57] bg-[#a0efd6]/50 hover:bg-[#a0efd6] py-1.5 rounded-lg font-['Be_Vietnam_Pro'] text-xs font-semibold transition-colors border border-[#a0efd6] cursor-pointer"
-                            >
-                              Aprovar
-                            </button>
-                            <button
-                              onClick={() => onRejectSolicitation(sol.id)}
-                              className="flex-1 text-[#ba1a1a] bg-[#ffdad6]/50 hover:bg-[#ffdad6] py-1.5 rounded-lg font-['Be_Vietnam_Pro'] text-xs font-semibold transition-colors border border-[#ffdad6] cursor-pointer"
-                            >
-                              Recusar
-                            </button>
-                          </>
-                        ) : (
-                          <button
-                            onClick={() => onOpenSolicitationProfile(sol)}
-                            className="w-full text-[#074469] bg-[#a5d4ff]/40 hover:bg-[#a5d4ff]/70 py-2 rounded-lg font-['Be_Vietnam_Pro'] text-xs font-semibold transition-colors border border-[#a5d4ff] cursor-pointer"
-                          >
-                            Analisar Perfil
-                          </button>
+                    <div className="ml-2">
+                      <div className="flex justify-between items-center mb-1">
+                        <p className="font-['Plus_Jakarta_Sans'] text-sm text-[#074469] font-bold">
+                          {sol.type}: {sol.petName}
+                        </p>
+                        {sol.status === 'approved' && (
+                          <span className="text-[11px] font-bold text-[#126b57] bg-[#a0efd6] px-2 py-0.5 rounded-full">
+                            Concedida
+                          </span>
+                        )}
+                        {sol.status === 'rejected' && (
+                          <span className="text-[11px] font-bold text-[#ba1a1a] bg-[#ffdad6] px-2 py-0.5 rounded-full">
+                            Recusada
+                          </span>
                         )}
                       </div>
-                    )}
+
+                      <p className="font-['Be_Vietnam_Pro'] text-xs text-[#41474e] mb-3 leading-relaxed">
+                        Adotante: <strong className="text-[#191c1e]">{sol.requesterName}</strong>
+                        <br />
+                        Contato: {sol.phone || sol.email}
+                      </p>
+
+                      {sol.status === 'pending' && (
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => onApproveSolicitation(sol.id)}
+                            className="flex-1 text-[#126b57] bg-[#a0efd6]/60 hover:bg-[#a0efd6] py-1.5 rounded-lg font-['Be_Vietnam_Pro'] text-xs font-bold transition-colors border border-[#a0efd6] cursor-pointer"
+                          >
+                            Conceder Adoção
+                          </button>
+                          <button
+                            onClick={() => onRejectSolicitation(sol.id)}
+                            className="flex-1 text-[#ba1a1a] bg-[#ffdad6]/60 hover:bg-[#ffdad6] py-1.5 rounded-lg font-['Be_Vietnam_Pro'] text-xs font-bold transition-colors border border-[#ffdad6] cursor-pointer"
+                          >
+                            Recusar
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>

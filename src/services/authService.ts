@@ -1,15 +1,19 @@
-import { User, UserRole } from '../types';
+import { User, UserRole, OngSession, ONG } from '../types';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { INITIAL_ONGS } from '../data/initialData';
 
-const AUTH_USER_KEY = 'correntecao_auth_user';
-const USERS_DB_KEY = 'correntecao_users_store_v1';
+// Chaves de armazenamento isoladas para os dois sistemas de login
+const USER_SESSION_KEY = 'matchpet_user_session';
+const ONG_SESSION_KEY = 'matchpet_ong_session';
+const USERS_STORE_KEY = 'matchpet_users_store_v2';
+const ONGS_STORE_KEY = 'matchpet_ongs_store_v2';
 
 // Credenciais fixas de Administrador
 export const ADMIN_CREDENTIALS = {
   email: 'admin@gmail.com',
   plainPassword: 'hiqufxAqTYouTeJmYqFYPHFELoUEXwtc',
-  name: 'Administrador CorrenteCão',
-  role: 'admin' as UserRole
+  name: 'Administrador MatchPet',
+  role: 'admin' as const
 };
 
 /**
@@ -25,7 +29,6 @@ async function withTimeout<T>(promiseLike: PromiseLike<T> | Promise<T>, ms = 250
 
 /**
  * Criptografia de senha usando SHA-256 (Web Crypto API)
- * Transforma a senha em texto plano em um hash hexadecimal irreversível
  */
 export async function hashPassword(password: string): Promise<string> {
   const encoder = new TextEncoder();
@@ -45,51 +48,54 @@ interface StoredUser {
   createdAt: string;
 }
 
-// Helpers de Storage Local para fallback e persistência offline
+// Helpers de Storage Local
 function getStoredUsers(): StoredUser[] {
   try {
-    const raw = localStorage.getItem(USERS_DB_KEY);
+    const raw = localStorage.getItem(USERS_STORE_KEY);
     return raw ? JSON.parse(raw) : [];
   } catch (err) {
-    console.error('Erro ao ler usuários do localStorage:', err);
     return [];
   }
 }
 
 function saveStoredUsers(users: StoredUser[]): void {
   try {
-    localStorage.setItem(USERS_DB_KEY, JSON.stringify(users));
+    localStorage.setItem(USERS_STORE_KEY, JSON.stringify(users));
   } catch (err) {
-    console.error('Erro ao salvar usuários no localStorage:', err);
+    console.error('Erro ao salvar usuários no storage:', err);
+  }
+}
+
+function getStoredOngs(): ONG[] {
+  try {
+    const raw = localStorage.getItem(ONGS_STORE_KEY);
+    if (!raw) {
+      localStorage.setItem(ONGS_STORE_KEY, JSON.stringify(INITIAL_ONGS));
+      return INITIAL_ONGS;
+    }
+    return JSON.parse(raw);
+  } catch (err) {
+    return INITIAL_ONGS;
+  }
+}
+
+function saveStoredOngs(ongs: ONG[]): void {
+  try {
+    localStorage.setItem(ONGS_STORE_KEY, JSON.stringify(ongs));
+  } catch (err) {
+    console.error('Erro ao salvar ONGs no storage:', err);
   }
 }
 
 export const authService = {
   /**
-   * Inicializa o banco com a conta de Administrador obrigatória caso ainda não exista
+   * Inicializa o banco com a conta de Administrador e ONGs iniciais
    */
   async init(): Promise<void> {
     try {
+      getStoredOngs(); // Garante inicialização local
       const adminHash = await hashPassword(ADMIN_CREDENTIALS.plainPassword);
-      const localUsers = getStoredUsers();
-      const existingAdmin = localUsers.find(
-        (u) => u.email.toLowerCase() === ADMIN_CREDENTIALS.email.toLowerCase()
-      );
 
-      if (!existingAdmin) {
-        const adminUser: StoredUser = {
-          id: 'admin-root-01',
-          name: ADMIN_CREDENTIALS.name,
-          email: ADMIN_CREDENTIALS.email.toLowerCase(),
-          passwordHash: adminHash,
-          role: 'admin',
-          createdAt: new Date().toISOString()
-        };
-        localUsers.push(adminUser);
-        saveStoredUsers(localUsers);
-      }
-
-      // Se Supabase estiver conectado, sincroniza o admin no banco remoto de forma não-bloqueante
       if (isSupabaseConfigured) {
         withTimeout(
           supabase
@@ -107,28 +113,21 @@ export const authService = {
                 senha_hash: adminHash,
                 role: 'admin'
               });
-            } else if (data.role !== 'admin' || data.senha_hash !== adminHash) {
-              await supabase
-                .from('usuarios')
-                .update({ role: 'admin', senha_hash: adminHash })
-                .eq('email', ADMIN_CREDENTIALS.email.toLowerCase());
             }
           })
-          .catch((dbErr) => {
-            console.warn('Sincronização de admin no Supabase (não-bloqueante):', dbErr);
-          });
+          .catch((err) => console.warn('Sync admin Supabase:', err));
       }
     } catch (error) {
       console.error('Erro ao inicializar authService:', error);
     }
   },
 
-  /**
-   * Retorna o usuário autenticado atualmente na sessão
-   */
+  // ============================================================================
+  // 1. SISTEMA DE AUTENTICAÇÃO DE ADOTANTES (USUÁRIOS COMUNS)
+  // ============================================================================
   getCurrentUser(): User | null {
     try {
-      const raw = localStorage.getItem(AUTH_USER_KEY);
+      const raw = localStorage.getItem(USER_SESSION_KEY);
       if (!raw) return null;
       return JSON.parse(raw) as User;
     } catch (err) {
@@ -136,10 +135,7 @@ export const authService = {
     }
   },
 
-  /**
-   * Valida email e senha e retorna a sessão autenticada com seu nível de acesso
-   */
-  async login(
+  async loginUser(
     emailInput: string,
     passwordInput: string
   ): Promise<{ success: boolean; user?: User; error?: string }> {
@@ -147,30 +143,12 @@ export const authService = {
     const password = passwordInput.trim();
 
     if (!email || !password) {
-      return { success: false, error: 'Por favor, preencha todos os campos.' };
+      return { success: false, error: 'Preencha o e-mail e a senha.' };
     }
 
     const inputHash = await hashPassword(password);
 
-    // 1. Validação Instantânea para a conta fixa de Administrador
-    if (email === ADMIN_CREDENTIALS.email.toLowerCase()) {
-      const adminHash = await hashPassword(ADMIN_CREDENTIALS.plainPassword);
-      if (inputHash === adminHash) {
-        const adminUser: User = {
-          id: 'admin-root-01',
-          name: ADMIN_CREDENTIALS.name,
-          email: ADMIN_CREDENTIALS.email,
-          role: 'admin',
-          createdAt: new Date().toISOString()
-        };
-        localStorage.setItem(AUTH_USER_KEY, JSON.stringify(adminUser));
-        return { success: true, user: adminUser };
-      } else {
-        return { success: false, error: 'Senha de administrador incorreta.' };
-      }
-    }
-
-    // 2. Tentar autenticação via Supabase com timeout de proteção
+    // Tentar via Supabase
     if (isSupabaseConfigured) {
       try {
         const { data, error }: any = await withTimeout(
@@ -182,56 +160,45 @@ export const authService = {
           2500
         );
 
-        if (!error && data) {
-          if (data.senha_hash === inputHash) {
-            const user: User = {
-              id: String(data.id),
-              name: data.nome || data.name || (data.role === 'admin' ? 'Administrador' : 'Usuário'),
-              email: data.email,
-              role: data.role === 'admin' ? 'admin' : 'user',
-              phone: data.telefone || data.phone,
-              createdAt: data.created_at
-            };
-            localStorage.setItem(AUTH_USER_KEY, JSON.stringify(user));
-            return { success: true, user };
-          } else {
-            return { success: false, error: 'Senha incorreta. Tente novamente.' };
-          }
+        if (!error && data && data.senha_hash === inputHash) {
+          const user: User = {
+            id: String(data.id),
+            name: data.nome || 'Adotante',
+            email: data.email,
+            role: 'user',
+            phone: data.telefone,
+            createdAt: data.created_at
+          };
+          localStorage.setItem(USER_SESSION_KEY, JSON.stringify(user));
+          return { success: true, user };
         }
       } catch (err) {
-        console.warn('Falha na autenticação via Supabase (timeout ou offline), verificando credenciais locais:', err);
+        console.warn('Fallback para autenticação local de adotante:', err);
       }
     }
 
-    // 3. Fallback de usuários no localStorage
+    // Fallback Local
     const localUsers = getStoredUsers();
-    const foundUser = localUsers.find((u) => u.email.toLowerCase() === email);
+    const found = localUsers.find((u) => u.email.toLowerCase() === email);
 
-    if (!foundUser) {
-      return { success: false, error: 'E-mail não cadastrado no sistema.' };
-    }
-
-    if (foundUser.passwordHash !== inputHash) {
-      return { success: false, error: 'Senha incorreta. Tente novamente.' };
+    if (!found || found.passwordHash !== inputHash) {
+      return { success: false, error: 'E-mail ou senha de adotante inválidos.' };
     }
 
     const sessionUser: User = {
-      id: foundUser.id,
-      name: foundUser.name,
-      email: foundUser.email,
-      role: foundUser.role || 'user',
-      phone: foundUser.phone,
-      createdAt: foundUser.createdAt
+      id: found.id,
+      name: found.name,
+      email: found.email,
+      role: 'user',
+      phone: found.phone,
+      createdAt: found.createdAt
     };
 
-    localStorage.setItem(AUTH_USER_KEY, JSON.stringify(sessionUser));
+    localStorage.setItem(USER_SESSION_KEY, JSON.stringify(sessionUser));
     return { success: true, user: sessionUser };
   },
 
-  /**
-   * Registra um novo usuário comum no banco com senha criptografada (SHA-256)
-   */
-  async register(
+  async registerUser(
     nameInput: string,
     emailInput: string,
     passwordInput: string,
@@ -250,16 +217,12 @@ export const authService = {
       return { success: false, error: 'A senha deve conter no mínimo 6 caracteres.' };
     }
 
-    // Se tentar cadastrar o email de admin pela rota de usuário comum
-    const isSpecialAdmin = email === ADMIN_CREDENTIALS.email.toLowerCase();
-    const role: UserRole = isSpecialAdmin ? 'admin' : 'user';
     const passwordHash = await hashPassword(password);
-
-    // Verificar se usuário já existe localmente
     const localUsers = getStoredUsers();
-    const existingIndex = localUsers.findIndex((u) => u.email.toLowerCase() === email);
-    if (existingIndex >= 0 && !isSpecialAdmin) {
-      return { success: false, error: 'Este e-mail já está cadastrado. Faça login.' };
+    const existing = localUsers.find((u) => u.email.toLowerCase() === email);
+
+    if (existing) {
+      return { success: false, error: 'Este e-mail já está cadastrado como adotante.' };
     }
 
     const newUser: StoredUser = {
@@ -267,52 +230,245 @@ export const authService = {
       name,
       email,
       passwordHash,
-      role,
+      role: 'user',
       phone,
       createdAt: new Date().toISOString()
     };
 
-    // Salvar localmente
-    if (existingIndex >= 0) {
-      localUsers[existingIndex] = newUser;
-    } else {
-      localUsers.push(newUser);
-    }
+    localUsers.push(newUser);
     saveStoredUsers(localUsers);
 
-    // Salvar no Supabase de forma protegida com timeout
     if (isSupabaseConfigured) {
       withTimeout(
         supabase.from('usuarios').insert({
           nome: name,
           email,
           senha_hash: passwordHash,
-          role,
+          role: 'user',
           telefone: phone
         }),
         2500
-      ).catch((dbErr) => {
-        console.warn('Erro ao inserir usuário no Supabase (não-bloqueante):', dbErr);
-      });
+      ).catch((err) => console.warn('Erro ao registrar no Supabase:', err));
     }
 
-    const sessionUser: User = {
+    const user: User = {
       id: newUser.id,
       name: newUser.name,
       email: newUser.email,
-      role: newUser.role,
+      role: 'user',
       phone: newUser.phone,
       createdAt: newUser.createdAt
     };
 
-    localStorage.setItem(AUTH_USER_KEY, JSON.stringify(sessionUser));
-    return { success: true, user: sessionUser };
+    localStorage.setItem(USER_SESSION_KEY, JSON.stringify(user));
+    return { success: true, user };
+  },
+
+  logoutUser(): void {
+    localStorage.removeItem(USER_SESSION_KEY);
+  },
+
+  // ============================================================================
+  // 2. SISTEMA DE AUTENTICAÇÃO DE ONGS E ADMINISTRADOR (100% INDEPENDENTE)
+  // ============================================================================
+  getCurrentOngSession(): OngSession | null {
+    try {
+      const raw = localStorage.getItem(ONG_SESSION_KEY);
+      if (!raw) return null;
+      return JSON.parse(raw) as OngSession;
+    } catch (err) {
+      return null;
+    }
+  },
+
+  async loginOngOrAdmin(
+    emailInput: string,
+    passwordInput: string
+  ): Promise<{ success: boolean; session?: OngSession; error?: string }> {
+    const email = emailInput.trim().toLowerCase();
+    const password = passwordInput.trim();
+
+    if (!email || !password) {
+      return { success: false, error: 'Preencha o e-mail e a senha.' };
+    }
+
+    const inputHash = await hashPassword(password);
+
+    // 1. Verificação de Administrador Root
+    if (email === ADMIN_CREDENTIALS.email.toLowerCase()) {
+      const adminHash = await hashPassword(ADMIN_CREDENTIALS.plainPassword);
+      if (inputHash === adminHash) {
+        const adminSession: OngSession = {
+          id: 'admin-root-01',
+          name: ADMIN_CREDENTIALS.name,
+          email: ADMIN_CREDENTIALS.email,
+          cnpj: '00.000.000/0001-00',
+          role: 'admin',
+          createdAt: new Date().toISOString()
+        };
+        localStorage.setItem(ONG_SESSION_KEY, JSON.stringify(adminSession));
+        return { success: true, session: adminSession };
+      } else {
+        return { success: false, error: 'Senha de administrador incorreta.' };
+      }
+    }
+
+    // 2. Verificação de ONG no Supabase
+    if (isSupabaseConfigured) {
+      try {
+        const { data, error }: any = await withTimeout(
+          supabase
+            .from('ongs')
+            .select('*')
+            .eq('email', email)
+            .maybeSingle(),
+          2500
+        );
+
+        if (!error && data) {
+          if (data.senha_hash === inputHash || data.password_hash === inputHash) {
+            const ongSession: OngSession = {
+              id: String(data.id),
+              name: data.name || data.nome || 'ONG Parceira',
+              email: data.email,
+              cnpj: data.cnpj || '00.000.000/0001-00',
+              role: 'ong',
+              phone: data.phone || data.telefone_whatsapp,
+              address: data.address || data.endereco,
+              city: data.city,
+              state: data.state,
+              image: data.image,
+              description: data.description,
+              createdAt: data.created_at
+            };
+            localStorage.setItem(ONG_SESSION_KEY, JSON.stringify(ongSession));
+            return { success: true, session: ongSession };
+          } else {
+            return { success: false, error: 'Senha da ONG incorreta.' };
+          }
+        }
+      } catch (err) {
+        console.warn('Fallback para autenticação local de ONG:', err);
+      }
+    }
+
+    // 3. Fallback de ONG no LocalStorage
+    const localOngs = getStoredOngs();
+    const foundOng = localOngs.find(
+      (o) => (o.email && o.email.toLowerCase() === email)
+    );
+
+    if (!foundOng) {
+      return { success: false, error: 'ONG não encontrada com este e-mail. Solicite cadastro ao Administrador.' };
+    }
+
+    if (foundOng.passwordHash && foundOng.passwordHash !== inputHash) {
+      return { success: false, error: 'Senha da ONG incorreta. Tente novamente.' };
+    }
+
+    const ongSession: OngSession = {
+      id: foundOng.id,
+      name: foundOng.name,
+      email: foundOng.email || email,
+      cnpj: foundOng.cnpj || '00.000.000/0001-00',
+      role: 'ong',
+      phone: foundOng.phone,
+      address: foundOng.address,
+      city: foundOng.city,
+      state: foundOng.state,
+      image: foundOng.image,
+      description: foundOng.description,
+      createdAt: foundOng.createdAt
+    };
+
+    localStorage.setItem(ONG_SESSION_KEY, JSON.stringify(ongSession));
+    return { success: true, session: ongSession };
   },
 
   /**
-   * Finaliza a sessão do usuário
+   * Criação de nova ONG pelo Administrador com credenciais de login
    */
-  logout(): void {
-    localStorage.removeItem(AUTH_USER_KEY);
+  async registerOngByAdmin(data: {
+    cnpj: string;
+    name: string;
+    email: string;
+    passwordPlain: string;
+    phone: string;
+    address: string;
+    city: string;
+    state: string;
+    description: string;
+    image?: string;
+  }): Promise<{ success: boolean; ong?: ONG; error?: string }> {
+    const cnpj = data.cnpj.trim();
+    const name = data.name.trim();
+    const email = data.email.trim().toLowerCase();
+    const password = data.passwordPlain.trim();
+
+    if (!cnpj || !name || !email || !password) {
+      return { success: false, error: 'CNPJ, Nome da ONG, E-mail e Senha são obrigatórios.' };
+    }
+
+    if (password.length < 6) {
+      return { success: false, error: 'A senha de acesso deve conter pelo menos 6 dígitos.' };
+    }
+
+    const passwordHash = await hashPassword(password);
+    const id = `ong-${Date.now()}`;
+
+    const newOng: ONG = {
+      id,
+      cnpj,
+      name,
+      email,
+      passwordHash,
+      phone: data.phone.trim() || '(11) 90000-0000',
+      address: data.address.trim() || 'Endereço não informado',
+      city: data.city.trim() || 'São Paulo',
+      state: data.state.trim() || 'SP',
+      description: data.description.trim() || 'Instituição dedicada ao resgate e bem-estar animal.',
+      image:
+        data.image?.trim() ||
+        'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?auto=format&fit=crop&w=800&q=80',
+      petsCount: 0,
+      featured: false,
+      createdAt: new Date().toISOString()
+    };
+
+    // Salvar localmente
+    const localOngs = getStoredOngs();
+    localOngs.push(newOng);
+    saveStoredOngs(localOngs);
+
+    // Salvar no Supabase
+    if (isSupabaseConfigured) {
+      try {
+        await withTimeout(
+          supabase.from('ongs').upsert({
+            id: newOng.id,
+            cnpj: newOng.cnpj,
+            name: newOng.name,
+            email: newOng.email,
+            senha_hash: passwordHash,
+            phone: newOng.phone,
+            address: newOng.address,
+            city: newOng.city,
+            state: newOng.state,
+            description: newOng.description,
+            image: newOng.image,
+            pets_count: 0
+          }),
+          3000
+        );
+      } catch (err) {
+        console.error('Erro ao sincronizar nova ONG no Supabase:', err);
+      }
+    }
+
+    return { success: true, ong: newOng };
+  },
+
+  logoutOng(): void {
+    localStorage.removeItem(ONG_SESSION_KEY);
   }
 };

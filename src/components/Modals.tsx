@@ -1,22 +1,26 @@
 import React, { useState } from 'react';
-import { Pet, ONG, Solicitation, FosterRequest, User } from '../types';
+import { Pet, ONG, Solicitation, FosterRequest, User, OngSession } from '../types';
 import { authService, ADMIN_CREDENTIALS } from '../services/authService';
 
 /* 1. Manifestar Interesse / Agendar Visita Modal */
 interface AdoptionInterestModalProps {
   pet: Pet;
+  currentUser: User | null;
   onClose: () => void;
+  onRequireLogin: () => void;
   onSubmit: (data: { name: string; phone: string; email: string; date: string; notes: string }) => void;
 }
 
 export const AdoptionInterestModal: React.FC<AdoptionInterestModalProps> = ({
   pet,
+  currentUser,
   onClose,
+  onRequireLogin,
   onSubmit
 }) => {
-  const [name, setName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [email, setEmail] = useState('');
+  const [name, setName] = useState(currentUser?.name || '');
+  const [phone, setPhone] = useState(currentUser?.phone || '');
+  const [email, setEmail] = useState(currentUser?.email || '');
   const [date, setDate] = useState('Sábado, 14h');
   const [housingType, setHousingType] = useState('Casa com quintal telado');
   const [notes, setNotes] = useState('');
@@ -24,11 +28,15 @@ export const AdoptionInterestModal: React.FC<AdoptionInterestModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!currentUser) {
+      onRequireLogin();
+      return;
+    }
     if (!name || !phone) return;
     onSubmit({
       name,
       phone,
-      email,
+      email: currentUser.email || email,
       date,
       notes: `${housingType}. ${notes}`
     });
@@ -40,25 +48,43 @@ export const AdoptionInterestModal: React.FC<AdoptionInterestModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-white rounded-2xl max-w-lg w-full p-6 md:p-8 shadow-2xl border border-[#e0e3e5] relative animate-in fade-in zoom-in duration-200">
+      <div className="bg-white rounded-3xl max-w-lg w-full p-6 md:p-8 shadow-2xl border border-[#e0e3e5] relative animate-in fade-in zoom-in duration-200">
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-[#72787f] hover:text-[#191c1e] p-1.5 rounded-full hover:bg-[#e0e3e5]"
+          className="absolute top-5 right-5 text-[#72787f] hover:text-[#191c1e] p-1.5 rounded-full hover:bg-[#e0e3e5] cursor-pointer"
         >
           <span className="material-symbols-outlined">close</span>
         </button>
 
         {submitted ? (
           <div className="text-center py-8">
-            <div className="w-16 h-16 bg-[#a0efd6] text-[#196f5b] rounded-full flex items-center justify-center mx-auto mb-4">
+            <div className="w-16 h-16 bg-[#a0efd6] text-[#126b57] rounded-2xl flex items-center justify-center mx-auto mb-4">
               <span className="material-symbols-outlined text-3xl">check</span>
             </div>
             <h3 className="font-['Plus_Jakarta_Sans'] text-2xl font-bold text-[#074469] mb-2">
-              Interesse Registrado!
+              Interesse Registrado no MatchPet!
             </h3>
             <p className="font-['Be_Vietnam_Pro'] text-sm text-[#41474e]">
-              A ONG <strong>{pet.ongName}</strong> entrará em contato via WhatsApp para confirmar sua visita ao <strong>{pet.name}</strong>.
+              A ONG <strong>{pet.ongName}</strong> recebeu seu contato e você pode acompanhar o status na aba <strong>Minhas Adoções</strong>.
             </p>
+          </div>
+        ) : !currentUser ? (
+          <div className="text-center py-6">
+            <div className="w-16 h-16 bg-[#ffdbc9] text-[#6d2f00] rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <span className="material-symbols-outlined text-3xl">lock</span>
+            </div>
+            <h3 className="font-['Plus_Jakarta_Sans'] text-2xl font-bold text-[#074469] mb-2">
+              Identificação Obrigatória
+            </h3>
+            <p className="font-['Be_Vietnam_Pro'] text-sm text-[#41474e] mb-6 leading-relaxed">
+              Para manifestar interesse e agendar uma visita com o(a) <strong>{pet.name}</strong>, é necessário entrar na sua conta de adotante no MatchPet.
+            </p>
+            <button
+              onClick={onRequireLogin}
+              className="bg-[#074469] hover:bg-[#2a5c82] text-white font-['Be_Vietnam_Pro'] font-bold text-sm px-6 py-3 rounded-xl transition-all shadow-sm w-full cursor-pointer"
+            >
+              Fazer Login / Cadastrar-se
+            </button>
           </div>
         ) : (
           <div>
@@ -66,19 +92,19 @@ export const AdoptionInterestModal: React.FC<AdoptionInterestModalProps> = ({
               <img
                 src={pet.mainImage}
                 alt={pet.name}
-                className="w-14 h-14 rounded-xl object-cover border border-[#e0e3e5]"
+                className="w-14 h-14 rounded-2xl object-cover border border-[#e0e3e5] shadow-2xs"
               />
               <div>
                 <h3 className="font-['Plus_Jakarta_Sans'] text-xl font-bold text-[#074469]">
                   Quero adotar o {pet.name}
                 </h3>
                 <p className="font-['Be_Vietnam_Pro'] text-xs text-[#72787f]">
-                  ONG Responsável: {pet.ongName}
+                  ONG Responsável: <strong>{pet.ongName}</strong>
                 </p>
               </div>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4 font-['Be_Vietnam_Pro'] text-sm">
+            <form onSubmit={handleSubmit} className="space-y-3.5 font-['Be_Vietnam_Pro'] text-sm">
               <div>
                 <label className="block text-xs font-semibold text-[#41474e] mb-1">
                   Seu Nome Completo *
@@ -89,7 +115,7 @@ export const AdoptionInterestModal: React.FC<AdoptionInterestModalProps> = ({
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Ex: Mariana Silva"
-                  className="w-full bg-[#f2f4f6] border border-[#c1c7cf] rounded-lg p-2.5 outline-none focus:border-[#074469] focus:bg-white"
+                  className="w-full bg-[#f2f4f6] border border-[#c1c7cf] rounded-xl p-2.5 outline-none focus:border-[#074469] focus:bg-white"
                 />
               </div>
 
@@ -104,19 +130,18 @@ export const AdoptionInterestModal: React.FC<AdoptionInterestModalProps> = ({
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     placeholder="(11) 99887-6655"
-                    className="w-full bg-[#f2f4f6] border border-[#c1c7cf] rounded-lg p-2.5 outline-none focus:border-[#074469] focus:bg-white"
+                    className="w-full bg-[#f2f4f6] border border-[#c1c7cf] rounded-xl p-2.5 outline-none focus:border-[#074469] focus:bg-white"
                   />
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-[#41474e] mb-1">
-                    E-mail
+                    E-mail do Adotante
                   </label>
                   <input
                     type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="seu@email.com"
-                    className="w-full bg-[#f2f4f6] border border-[#c1c7cf] rounded-lg p-2.5 outline-none focus:border-[#074469] focus:bg-white"
+                    disabled
+                    value={currentUser.email}
+                    className="w-full bg-[#e0e3e5]/60 border border-[#c1c7cf] rounded-xl p-2.5 outline-none text-[#72787f] cursor-not-allowed"
                   />
                 </div>
               </div>
@@ -124,12 +149,12 @@ export const AdoptionInterestModal: React.FC<AdoptionInterestModalProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-[#41474e] mb-1">
-                    Melhor dia/horário para visita
+                    Melhor dia para visita
                   </label>
                   <select
                     value={date}
                     onChange={(e) => setDate(e.target.value)}
-                    className="w-full bg-[#f2f4f6] border border-[#c1c7cf] rounded-lg p-2.5 outline-none focus:border-[#074469] focus:bg-white cursor-pointer"
+                    className="w-full bg-[#f2f4f6] border border-[#c1c7cf] rounded-xl p-2.5 outline-none focus:border-[#074469] focus:bg-white cursor-pointer"
                   >
                     <option value="Sábado, 10h às 12h">Sábado, 10h às 12h</option>
                     <option value="Sábado, 14h às 16h">Sábado, 14h às 16h</option>
@@ -145,7 +170,7 @@ export const AdoptionInterestModal: React.FC<AdoptionInterestModalProps> = ({
                   <select
                     value={housingType}
                     onChange={(e) => setHousingType(e.target.value)}
-                    className="w-full bg-[#f2f4f6] border border-[#c1c7cf] rounded-lg p-2.5 outline-none focus:border-[#074469] focus:bg-white cursor-pointer"
+                    className="w-full bg-[#f2f4f6] border border-[#c1c7cf] rounded-xl p-2.5 outline-none focus:border-[#074469] focus:bg-white cursor-pointer"
                   >
                     <option value="Casa com quintal seguro">Casa com quintal seguro</option>
                     <option value="Apartamento com rede de proteção">Apartamento com rede de proteção</option>
@@ -156,14 +181,14 @@ export const AdoptionInterestModal: React.FC<AdoptionInterestModalProps> = ({
 
               <div>
                 <label className="block text-xs font-semibold text-[#41474e] mb-1">
-                  Tem outros animais ou crianças? Alguma observação?
+                  Mensagem / Observações para a ONG
                 </label>
                 <textarea
                   rows={2}
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="Ex: Tenho outro cão dócil, moro com família..."
-                  className="w-full bg-[#f2f4f6] border border-[#c1c7cf] rounded-lg p-2.5 outline-none focus:border-[#074469] focus:bg-white resize-none"
+                  className="w-full bg-[#f2f4f6] border border-[#c1c7cf] rounded-xl p-2.5 outline-none focus:border-[#074469] focus:bg-white resize-none"
                 />
               </div>
 
@@ -199,79 +224,75 @@ export const IndicarOngModal: React.FC<IndicarOngModalProps> = ({ onClose, onSub
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !city) return;
-
+    if (!name || !city || !phone) return;
     onSubmit({
       name,
       city,
       state,
-      phone: phone || '(11) 90000-0000',
-      description: description || 'Instituição dedicada ao bem-estar e resgate animal.',
-      image:
-        'https://lh3.googleusercontent.com/aida-public/AB6AXuCeLWHs24XaUcWLidTvmpWuyCMw79Zvw3YtCMtvI7QR2MEDwN0zEEk7pBgnaXtzl3m-Ow18esAG9DeT1_Loqm8j6moJmSbj0oF_-aB6alzR1XWIn_UZOKA3kl7fCPNLN6TzmJidMgALYrc-JHjx4_ycMy5pTvzEwjjACU7aeSp6LncJsSlsfJsqdI10izFuoaQbL-UyOyNSmFMS-HR4Y_MSAEyxsF4F_VIM0YoiuWNBBFBhKrJCKWDkkg'
+      phone,
+      description
     });
-
     setSubmitted(true);
     setTimeout(() => {
       onClose();
-    }, 1600);
+    }, 1800);
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl max-w-lg w-full p-6 md:p-8 shadow-2xl border border-[#e0e3e5] relative animate-in fade-in zoom-in duration-200">
+    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+      <div className="bg-white rounded-3xl max-w-lg w-full p-6 md:p-8 shadow-2xl border border-[#e0e3e5] relative animate-in fade-in zoom-in duration-200">
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-[#72787f] hover:text-[#191c1e] p-1.5 rounded-full hover:bg-[#e0e3e5]"
+          className="absolute top-5 right-5 text-[#72787f] hover:text-[#191c1e] p-1.5 rounded-full hover:bg-[#e0e3e5] cursor-pointer"
         >
           <span className="material-symbols-outlined">close</span>
         </button>
 
         {submitted ? (
-          <div className="text-center py-6">
-            <div className="w-16 h-16 bg-[#a0efd6] text-[#196f5b] rounded-full flex items-center justify-center mx-auto mb-4">
-              <span className="material-symbols-outlined text-3xl">check</span>
+          <div className="text-center py-8">
+            <div className="w-16 h-16 bg-[#a0efd6] text-[#126b57] rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <span className="material-symbols-outlined text-3xl">thumb_up</span>
             </div>
             <h3 className="font-['Plus_Jakarta_Sans'] text-2xl font-bold text-[#074469] mb-2">
               Indicação Enviada!
             </h3>
             <p className="font-['Be_Vietnam_Pro'] text-sm text-[#41474e]">
-              A ONG foi adicionada à nossa lista de parceiras com sucesso!
+              A equipe do MatchPet entrará em contato para cadastrar a instituição.
             </p>
           </div>
         ) : (
           <div>
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-[#2a5c82]/15 rounded-xl flex items-center justify-center text-[#074469]">
-                <span className="material-symbols-outlined">add_business</span>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-10 h-10 rounded-xl bg-[#074469]/10 text-[#074469] flex items-center justify-center">
+                <span className="material-symbols-outlined text-2xl">add_business</span>
               </div>
               <div>
-                <h3 className="font-['Plus_Jakarta_Sans'] text-xl font-bold text-[#074469]">
-                  Indicar uma ONG Parceira
+                <h3 className="font-['Plus_Jakarta_Sans'] text-2xl font-bold text-[#074469]">
+                  Indicar uma ONG
                 </h3>
                 <p className="font-['Be_Vietnam_Pro'] text-xs text-[#72787f]">
-                  Ajude a conectar mais abrigos a novos tutores
+                  Ajude a expandir a rede de adoção do MatchPet.
                 </p>
               </div>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4 font-['Be_Vietnam_Pro'] text-sm">
+            <form onSubmit={handleSubmit} className="space-y-3.5 mt-5 font-['Be_Vietnam_Pro'] text-sm">
               <div>
                 <label className="block text-xs font-semibold text-[#41474e] mb-1">
-                  Nome da Instituição *
+                  Nome da ONG ou Protetor *
                 </label>
                 <input
                   type="text"
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="Ex: Associação Patas Felizes"
-                  className="w-full bg-[#f2f4f6] border border-[#c1c7cf] rounded-lg p-2.5 outline-none focus:border-[#074469] focus:bg-white"
+                  placeholder="Ex: Associação Patinhas do Bem"
+                  className="w-full bg-[#f2f4f6] border border-[#c1c7cf] rounded-xl p-2.5 outline-none focus:border-[#074469] focus:bg-white"
                 />
               </div>
 
-              <div className="grid grid-cols-3 gap-3">
-                <div className="col-span-2">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
                   <label className="block text-xs font-semibold text-[#41474e] mb-1">
                     Cidade *
                   </label>
@@ -280,63 +301,57 @@ export const IndicarOngModal: React.FC<IndicarOngModalProps> = ({ onClose, onSub
                     required
                     value={city}
                     onChange={(e) => setCity(e.target.value)}
-                    placeholder="Ex: Santos"
-                    className="w-full bg-[#f2f4f6] border border-[#c1c7cf] rounded-lg p-2.5 outline-none focus:border-[#074469] focus:bg-white"
+                    placeholder="Ex: São Paulo"
+                    className="w-full bg-[#f2f4f6] border border-[#c1c7cf] rounded-xl p-2.5 outline-none focus:border-[#074469] focus:bg-white"
                   />
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-[#41474e] mb-1">
-                    UF
+                    Estado (UF)
                   </label>
-                  <select
+                  <input
+                    type="text"
                     value={state}
-                    onChange={(e) => setState(e.target.value)}
-                    className="w-full bg-[#f2f4f6] border border-[#c1c7cf] rounded-lg p-2.5 outline-none focus:border-[#074469] focus:bg-white cursor-pointer"
-                  >
-                    <option value="SP">SP</option>
-                    <option value="RJ">RJ</option>
-                    <option value="MG">MG</option>
-                    <option value="PR">PR</option>
-                    <option value="RS">RS</option>
-                    <option value="SC">SC</option>
-                    <option value="BA">BA</option>
-                    <option value="DF">DF</option>
-                  </select>
+                    onChange={(e) => setState(e.target.value.toUpperCase().slice(0, 2))}
+                    placeholder="SP"
+                    className="w-full bg-[#f2f4f6] border border-[#c1c7cf] rounded-xl p-2.5 outline-none focus:border-[#074469] focus:bg-white uppercase font-mono"
+                  />
                 </div>
               </div>
 
               <div>
                 <label className="block text-xs font-semibold text-[#41474e] mb-1">
-                  Telefone / WhatsApp da ONG
+                  Telefone / WhatsApp de Contato *
                 </label>
                 <input
                   type="tel"
+                  required
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="(11) 98765-4321"
-                  className="w-full bg-[#f2f4f6] border border-[#c1c7cf] rounded-lg p-2.5 outline-none focus:border-[#074469] focus:bg-white"
+                  className="w-full bg-[#f2f4f6] border border-[#c1c7cf] rounded-xl p-2.5 outline-none focus:border-[#074469] focus:bg-white"
                 />
               </div>
 
               <div>
                 <label className="block text-xs font-semibold text-[#41474e] mb-1">
-                  Breve descrição das atividades
+                  Breve descrição ou link das redes sociais
                 </label>
                 <textarea
                   rows={2}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Resgate de cães e gatos, feiras de adoção..."
-                  className="w-full bg-[#f2f4f6] border border-[#c1c7cf] rounded-lg p-2.5 outline-none focus:border-[#074469] focus:bg-white resize-none"
+                  placeholder="Ex: @ongpatinhas no Instagram, atuam com cães resgatados..."
+                  className="w-full bg-[#f2f4f6] border border-[#c1c7cf] rounded-xl p-2.5 outline-none focus:border-[#074469] focus:bg-white resize-none"
                 />
               </div>
 
               <div className="pt-2">
                 <button
                   type="submit"
-                  className="w-full bg-[#074469] hover:bg-[#2a5c82] text-white font-bold py-3 rounded-xl transition-all shadow-sm active:scale-98 cursor-pointer"
+                  className="w-full bg-[#074469] hover:bg-[#2a5c82] text-white font-bold py-3 rounded-xl transition-all shadow-sm cursor-pointer"
                 >
-                  Cadastrar Indicação
+                  Enviar Indicação
                 </button>
               </div>
             </form>
@@ -347,119 +362,159 @@ export const IndicarOngModal: React.FC<IndicarOngModalProps> = ({ onClose, onSub
   );
 };
 
-/* 3. Auth Modal (Entrar / Cadastrar com dois níveis de acesso: Admin e Usuário) */
+/* 3. Auth Modal (DOIS SISTEMAS DE LOGIN 100% INDEPENDENTES: ADOTANTE VS ONG/ADMIN) */
 interface AuthModalProps {
-  mode: 'login' | 'register';
+  defaultProfile?: 'user' | 'ong';
   onClose: () => void;
-  onSuccess?: (user: User) => void;
+  onUserSuccess?: (user: User) => void;
+  onOngSuccess?: (session: OngSession) => void;
 }
 
-export const AuthModal: React.FC<AuthModalProps> = ({ mode: initialMode, onClose, onSuccess }) => {
-  const [mode, setMode] = useState<'login' | 'register'>(initialMode);
+export const AuthModal: React.FC<AuthModalProps> = ({
+  defaultProfile = 'user',
+  onClose,
+  onUserSuccess,
+  onOngSuccess
+}) => {
+  const [profileType, setProfileType] = useState<'user' | 'ong'>(defaultProfile);
+  const [userMode, setUserMode] = useState<'login' | 'register'>('login');
+
+  // Adotante states
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
+
+  // ONG/Admin states
+  const [ongEmail, setOngEmail] = useState('');
+  const [ongPassword, setOngPassword] = useState('');
+
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [authenticatedUser, setAuthenticatedUser] = useState<User | null>(null);
 
   const fillAdminCredentials = () => {
-    setEmail(ADMIN_CREDENTIALS.email);
-    setPassword(ADMIN_CREDENTIALS.plainPassword);
+    setOngEmail(ADMIN_CREDENTIALS.email);
+    setOngPassword(ADMIN_CREDENTIALS.plainPassword);
     setErrorMessage(null);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleUserSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
     setLoading(true);
 
     try {
-      if (mode === 'login') {
-        const result = await authService.login(email, password);
+      if (userMode === 'login') {
+        const result = await authService.loginUser(email, password);
         if (!result.success || !result.user) {
-          setErrorMessage(result.error || 'Credenciais inválidas.');
+          setErrorMessage(result.error || 'Credenciais de adotante inválidas.');
           setLoading(false);
           return;
         }
-        setAuthenticatedUser(result.user);
-        if (onSuccess) onSuccess(result.user);
-        setTimeout(() => {
-          onClose();
-        }, 1400);
+        if (onUserSuccess) onUserSuccess(result.user);
+        onClose();
       } else {
-        const result = await authService.register(name, email, password, phone);
+        const result = await authService.registerUser(name, email, password, phone);
         if (!result.success || !result.user) {
-          setErrorMessage(result.error || 'Não foi possível cadastrar a conta.');
+          setErrorMessage(result.error || 'Não foi possível cadastrar a conta de adotante.');
           setLoading(false);
           return;
         }
-        setAuthenticatedUser(result.user);
-        if (onSuccess) onSuccess(result.user);
-        setTimeout(() => {
-          onClose();
-        }, 1400);
+        if (onUserSuccess) onUserSuccess(result.user);
+        onClose();
       }
     } catch (err: any) {
-      setErrorMessage(err?.message || 'Ocorreu um erro ao processar a autenticação.');
+      setErrorMessage(err?.message || 'Erro ao autenticar.');
     } finally {
       setLoading(false);
     }
   };
 
-  const isAdmin = authenticatedUser?.role === 'admin';
+  const handleOngSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMessage(null);
+    setLoading(true);
+
+    try {
+      const result = await authService.loginOngOrAdmin(ongEmail, ongPassword);
+      if (!result.success || !result.session) {
+        setErrorMessage(result.error || 'Credenciais de ONG ou Administrador inválidas.');
+        setLoading(false);
+        return;
+      }
+      if (onOngSuccess) onOngSuccess(result.session);
+      onClose();
+    } catch (err: any) {
+      setErrorMessage(err?.message || 'Erro ao processar login de ONG/Admin.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl max-w-md w-full p-6 md:p-8 shadow-2xl border border-[#e0e3e5] relative animate-in fade-in zoom-in duration-200">
+      <div className="bg-white rounded-3xl max-w-md w-full p-6 md:p-8 shadow-2xl border border-[#e0e3e5] relative animate-in fade-in zoom-in duration-200">
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-[#72787f] hover:text-[#191c1e] p-1.5 rounded-full hover:bg-[#e0e3e5] cursor-pointer"
+          className="absolute top-5 right-5 text-[#72787f] hover:text-[#191c1e] p-1.5 rounded-full hover:bg-[#e0e3e5] cursor-pointer"
         >
           <span className="material-symbols-outlined">close</span>
         </button>
 
-        {authenticatedUser ? (
-          <div className="text-center py-6">
-            <div
-              className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
-                isAdmin ? 'bg-[#074469] text-[#a0efd6]' : 'bg-[#a0efd6] text-[#196f5b]'
-              }`}
-            >
-              <span className="material-symbols-outlined text-3xl">
-                {isAdmin ? 'admin_panel_settings' : 'check'}
-              </span>
-            </div>
-            <h3 className="font-['Plus_Jakarta_Sans'] text-2xl font-bold text-[#074469] mb-1">
-              {isAdmin ? 'Acesso Administrador' : 'Bem-vindo(a)!'}
-            </h3>
-            <p className="font-['Be_Vietnam_Pro'] text-sm text-[#41474e] mb-3">
-              Olá, <strong>{authenticatedUser.name}</strong> ({authenticatedUser.email}).
-            </p>
-            <span
-              className={`inline-block text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full ${
-                isAdmin ? 'bg-[#074469] text-[#a0efd6]' : 'bg-[#e0e3e5] text-[#191c1e]'
-              }`}
-            >
-              {isAdmin ? 'Painel Administrativo Desbloqueado' : 'Perfil de Usuário Padrão'}
-            </span>
+        {/* SELETOR DE PERFIL: ADOTANTE VS ONG/ADMIN */}
+        <div className="flex bg-[#eceef0] p-1 rounded-2xl mb-6 font-['Be_Vietnam_Pro'] text-xs font-bold">
+          <button
+            type="button"
+            onClick={() => {
+              setProfileType('user');
+              setErrorMessage(null);
+            }}
+            className={`flex-1 py-2.5 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+              profileType === 'user' ? 'bg-[#074469] text-white shadow-xs' : 'text-[#41474e] hover:text-[#074469]'
+            }`}
+          >
+            <span className="material-symbols-outlined text-sm">person</span>
+            <span>Sou Adotante</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setProfileType('ong');
+              setErrorMessage(null);
+            }}
+            className={`flex-1 py-2.5 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+              profileType === 'ong' ? 'bg-[#126b57] text-white shadow-xs' : 'text-[#41474e] hover:text-[#126b57]'
+            }`}
+          >
+            <span className="material-symbols-outlined text-sm">domain</span>
+            <span>Sou ONG / Admin</span>
+          </button>
+        </div>
+
+        {/* Error message banner */}
+        {errorMessage && (
+          <div className="mb-4 bg-[#ffdad6] text-[#ba1a1a] p-3 rounded-xl text-xs font-['Be_Vietnam_Pro'] flex items-center gap-2">
+            <span className="material-symbols-outlined text-sm">error</span>
+            <span>{errorMessage}</span>
           </div>
-        ) : (
+        )}
+
+        {/* ========================================================================= */}
+        {/* FLUXO 1: LOGIN / CADASTRO DE ADOTANTE */}
+        {/* ========================================================================= */}
+        {profileType === 'user' && (
           <div>
-            {/* Header Tabs */}
-            <div className="flex border-b border-[#e0e3e5] mb-6">
+            <div className="flex border-b border-[#e0e3e5] mb-5">
               <button
                 type="button"
                 onClick={() => {
-                  setMode('login');
+                  setUserMode('login');
                   setErrorMessage(null);
                 }}
-                className={`flex-1 pb-3 text-center font-['Plus_Jakarta_Sans'] font-bold text-base border-b-2 transition-all cursor-pointer ${
-                  mode === 'login'
-                    ? 'border-[#074469] text-[#074469]'
-                    : 'border-transparent text-[#72787f] hover:text-[#191c1e]'
+                className={`flex-1 pb-2.5 text-center font-['Plus_Jakarta_Sans'] font-bold text-sm border-b-2 transition-all cursor-pointer ${
+                  userMode === 'login' ? 'border-[#074469] text-[#074469]' : 'border-transparent text-[#72787f]'
                 }`}
               >
                 Entrar
@@ -467,35 +522,19 @@ export const AuthModal: React.FC<AuthModalProps> = ({ mode: initialMode, onClose
               <button
                 type="button"
                 onClick={() => {
-                  setMode('register');
+                  setUserMode('register');
                   setErrorMessage(null);
                 }}
-                className={`flex-1 pb-3 text-center font-['Plus_Jakarta_Sans'] font-bold text-base border-b-2 transition-all cursor-pointer ${
-                  mode === 'register'
-                    ? 'border-[#074469] text-[#074469]'
-                    : 'border-transparent text-[#72787f] hover:text-[#191c1e]'
+                className={`flex-1 pb-2.5 text-center font-['Plus_Jakarta_Sans'] font-bold text-sm border-b-2 transition-all cursor-pointer ${
+                  userMode === 'register' ? 'border-[#074469] text-[#074469]' : 'border-transparent text-[#72787f]'
                 }`}
               >
-                Cadastrar
+                Criar Conta
               </button>
             </div>
 
-            <p className="font-['Be_Vietnam_Pro'] text-xs text-[#72787f] mb-4">
-              {mode === 'login'
-                ? 'Insira suas credenciais para acessar sua conta ou o painel administrativo.'
-                : 'Cadastre-se como adotante para agendar visitas e salvar seus pets favoritos.'}
-            </p>
-
-            {/* Error banner */}
-            {errorMessage && (
-              <div className="mb-4 bg-[#ffdad6] text-[#ba1a1a] p-3 rounded-xl text-xs font-['Be_Vietnam_Pro'] flex items-center gap-2 animate-in fade-in">
-                <span className="material-symbols-outlined text-sm">error</span>
-                <span>{errorMessage}</span>
-              </div>
-            )}
-
-            <form onSubmit={handleSubmit} className="space-y-3.5 font-['Be_Vietnam_Pro'] text-sm">
-              {mode === 'register' && (
+            <form onSubmit={handleUserSubmit} className="space-y-3.5 font-['Be_Vietnam_Pro'] text-sm">
+              {userMode === 'register' && (
                 <div>
                   <label className="block text-xs font-semibold text-[#41474e] mb-1">
                     Nome Completo *
@@ -505,37 +544,37 @@ export const AuthModal: React.FC<AuthModalProps> = ({ mode: initialMode, onClose
                     required
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    placeholder="Ex: João da Silva"
-                    className="w-full bg-[#f2f4f6] border border-[#c1c7cf] rounded-lg p-2.5 outline-none focus:border-[#074469] focus:bg-white"
+                    placeholder="Seu nome completo"
+                    className="w-full bg-[#f2f4f6] border border-[#c1c7cf] rounded-xl p-2.5 outline-none focus:border-[#074469] focus:bg-white text-xs"
                   />
                 </div>
               )}
 
               <div>
                 <label className="block text-xs font-semibold text-[#41474e] mb-1">
-                  E-mail *
+                  E-mail do Adotante *
                 </label>
                 <input
                   type="email"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="exemplo@email.com"
-                  className="w-full bg-[#f2f4f6] border border-[#c1c7cf] rounded-lg p-2.5 outline-none focus:border-[#074469] focus:bg-white"
+                  placeholder="seu@email.com"
+                  className="w-full bg-[#f2f4f6] border border-[#c1c7cf] rounded-xl p-2.5 outline-none focus:border-[#074469] focus:bg-white text-xs"
                 />
               </div>
 
-              {mode === 'register' && (
+              {userMode === 'register' && (
                 <div>
                   <label className="block text-xs font-semibold text-[#41474e] mb-1">
-                    Telefone / WhatsApp (Opcional)
+                    WhatsApp (Opcional)
                   </label>
                   <input
                     type="tel"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     placeholder="(11) 98765-4321"
-                    className="w-full bg-[#f2f4f6] border border-[#c1c7cf] rounded-lg p-2.5 outline-none focus:border-[#074469] focus:bg-white"
+                    className="w-full bg-[#f2f4f6] border border-[#c1c7cf] rounded-xl p-2.5 outline-none focus:border-[#074469] focus:bg-white text-xs"
                   />
                 </div>
               )}
@@ -559,41 +598,97 @@ export const AuthModal: React.FC<AuthModalProps> = ({ mode: initialMode, onClose
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full bg-[#f2f4f6] border border-[#c1c7cf] rounded-lg p-2.5 outline-none focus:border-[#074469] focus:bg-white font-mono text-sm"
+                  className="w-full bg-[#f2f4f6] border border-[#c1c7cf] rounded-xl p-2.5 outline-none focus:border-[#074469] focus:bg-white font-mono text-xs"
                 />
               </div>
-
-              {/* Botão de atalho rápido para credenciais de administrador */}
-              {mode === 'login' && (
-                <div className="pt-1">
-                  <button
-                    type="button"
-                    onClick={fillAdminCredentials}
-                    className="w-full text-left text-[11px] text-[#074469] bg-[#074469]/5 hover:bg-[#074469]/10 p-2 rounded-lg border border-[#074469]/20 flex items-center justify-between cursor-pointer transition-colors"
-                  >
-                    <span className="flex items-center gap-1">
-                      <span className="material-symbols-outlined text-xs">admin_panel_settings</span>
-                      Preencher credenciais do <strong>Administrador</strong>
-                    </span>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#074469]">Auto-fill</span>
-                  </button>
-                </div>
-              )}
 
               <div className="pt-2">
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full bg-[#074469] hover:bg-[#2a5c82] disabled:opacity-60 text-white font-bold py-3 rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 cursor-pointer"
+                  className="w-full bg-[#074469] hover:bg-[#2a5c82] disabled:opacity-60 text-white font-bold py-3 rounded-xl transition-all shadow-sm cursor-pointer"
                 >
-                  {loading ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      <span>Validando acesso...</span>
-                    </>
-                  ) : (
-                    <span>{mode === 'login' ? 'Entrar no Sistema' : 'Criar Conta de Usuário'}</span>
-                  )}
+                  {loading ? 'Acessando...' : userMode === 'login' ? 'Entrar como Adotante' : 'Cadastrar e Entrar'}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* FLUXO 2: LOGIN DE ONG OU ADMINISTRADOR GERAL */}
+        {/* ========================================================================= */}
+        {profileType === 'ong' && (
+          <div>
+            <div className="mb-4">
+              <h3 className="font-['Plus_Jakarta_Sans'] font-bold text-base text-[#126b57]">
+                Acesso Restrito: ONGs & Administração
+              </h3>
+              <p className="font-['Be_Vietnam_Pro'] text-xs text-[#72787f] mt-0.5">
+                Utilize as credenciais geradas pelo Administrador MatchPet.
+              </p>
+            </div>
+
+            <form onSubmit={handleOngSubmit} className="space-y-3.5 font-['Be_Vietnam_Pro'] text-sm">
+              <div>
+                <label className="block text-xs font-semibold text-[#41474e] mb-1">
+                  E-mail da Instituição ou Admin *
+                </label>
+                <input
+                  type="email"
+                  required
+                  value={ongEmail}
+                  onChange={(e) => setOngEmail(e.target.value)}
+                  placeholder="login@ong.org.br ou admin@gmail.com"
+                  className="w-full bg-[#f2f4f6] border border-[#c1c7cf] rounded-xl p-2.5 outline-none focus:border-[#126b57] focus:bg-white text-xs"
+                />
+              </div>
+
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="block text-xs font-semibold text-[#41474e]">
+                    Senha de Acesso *
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="text-[11px] text-[#126b57] hover:underline cursor-pointer"
+                  >
+                    {showPassword ? 'Ocultar' : 'Mostrar'}
+                  </button>
+                </div>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  value={ongPassword}
+                  onChange={(e) => setOngPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full bg-[#f2f4f6] border border-[#c1c7cf] rounded-xl p-2.5 outline-none focus:border-[#126b57] focus:bg-white font-mono text-xs"
+                />
+              </div>
+
+              {/* Botão de Atalho para Admin */}
+              <div className="pt-1">
+                <button
+                  type="button"
+                  onClick={fillAdminCredentials}
+                  className="w-full text-left text-[11px] text-[#074469] bg-[#074469]/5 hover:bg-[#074469]/10 p-2 rounded-xl border border-[#074469]/20 flex items-center justify-between cursor-pointer"
+                >
+                  <span className="flex items-center gap-1">
+                    <span className="material-symbols-outlined text-xs">admin_panel_settings</span>
+                    Preencher credenciais do <strong>Administrador</strong>
+                  </span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#074469]">Auto-fill</span>
+                </button>
+              </div>
+
+              <div className="pt-2">
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full bg-[#126b57] hover:bg-[#005141] disabled:opacity-60 text-white font-bold py-3 rounded-xl transition-all shadow-sm cursor-pointer"
+                >
+                  {loading ? 'Validando Acesso...' : 'Entrar no Painel da ONG / Admin'}
                 </button>
               </div>
             </form>
@@ -604,12 +699,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({ mode: initialMode, onClose
   );
 };
 
-/* 4. PIX Apoio Modal */
+/* 4. Apoio PIX Modal */
 export const ApoioPixModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const [copied, setCopied] = useState(false);
-  const pixKey = 'contato@correntecao.ong.br';
+  const pixKey = 'apoio@matchpet.ong.br';
 
-  const copyPix = () => {
+  const handleCopy = () => {
     navigator.clipboard.writeText(pixKey);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -617,73 +712,38 @@ export const ApoioPixModal: React.FC<{ onClose: () => void }> = ({ onClose }) =>
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl max-w-md w-full p-6 md:p-8 shadow-2xl border border-[#e0e3e5] relative text-center">
+      <div className="bg-white rounded-3xl max-w-md w-full p-6 md:p-8 shadow-2xl border border-[#e0e3e5] relative animate-in fade-in zoom-in duration-200 text-center">
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-[#72787f] hover:text-[#191c1e] p-1.5 rounded-full hover:bg-[#e0e3e5]"
+          className="absolute top-5 right-5 text-[#72787f] hover:text-[#191c1e] p-1.5 rounded-full hover:bg-[#e0e3e5] cursor-pointer"
         >
           <span className="material-symbols-outlined">close</span>
         </button>
 
-        <div className="w-14 h-14 bg-[#a0efd6] text-[#196f5b] rounded-2xl flex items-center justify-center mx-auto mb-3">
+        <div className="w-16 h-16 bg-[#a0efd6] text-[#126b57] rounded-2xl flex items-center justify-center mx-auto mb-4">
           <span className="material-symbols-outlined text-3xl">volunteer_activism</span>
         </div>
 
-        <h3 className="font-['Plus_Jakarta_Sans'] text-2xl font-bold text-[#074469] mb-1">
-          Apoio via PIX
+        <h3 className="font-['Plus_Jakarta_Sans'] text-2xl font-bold text-[#074469] mb-2">
+          Apoie o MatchPet
         </h3>
-        <p className="font-['Be_Vietnam_Pro'] text-xs text-[#41474e] mb-6">
-          100% das doações são repassadas diretamente para a compra de ração, vacinas e cuidados veterinários das ONGs cadastradas.
+        <p className="font-['Be_Vietnam_Pro'] text-xs sm:text-sm text-[#41474e] mb-6 leading-relaxed">
+          Sua doação voluntária ajuda na manutenção da plataforma MatchPet e no suporte alimentar e médico de centenas de animais resgatados.
         </p>
 
-        {/* QR Code box */}
-        <div className="bg-[#f7f9fb] p-6 rounded-2xl border border-[#e0e3e5] inline-block mb-4">
-          <div className="w-44 h-44 bg-white border-2 border-[#074469] rounded-xl flex items-center justify-center mx-auto p-2">
-            {/* SVG simulated QR Code */}
-            <svg viewBox="0 0 100 100" className="w-full h-full text-[#074469]">
-              <rect x="5" y="5" width="30" height="30" fill="currentColor" />
-              <rect x="10" y="10" width="20" height="20" fill="white" />
-              <rect x="14" y="14" width="12" height="12" fill="currentColor" />
-              
-              <rect x="65" y="5" width="30" height="30" fill="currentColor" />
-              <rect x="70" y="10" width="20" height="20" fill="white" />
-              <rect x="74" y="14" width="12" height="12" fill="currentColor" />
-
-              <rect x="5" y="65" width="30" height="30" fill="currentColor" />
-              <rect x="10" y="70" width="20" height="20" fill="white" />
-              <rect x="14" y="74" width="12" height="12" fill="currentColor" />
-
-              <rect x="42" y="10" width="10" height="10" fill="currentColor" />
-              <rect x="45" y="28" width="10" height="20" fill="currentColor" />
-              <rect x="60" y="42" width="25" height="10" fill="currentColor" />
-              <rect x="42" y="65" width="15" height="15" fill="currentColor" />
-              <rect x="65" y="75" width="20" height="12" fill="currentColor" />
-            </svg>
-          </div>
-          <span className="text-[11px] font-['Be_Vietnam_Pro'] text-[#72787f] block mt-2">
-            Escaneie com o app do seu banco
-          </span>
-        </div>
-
-        {/* Chave PIX copy */}
-        <div className="flex items-center gap-2 bg-[#f2f4f6] p-2 rounded-xl border border-[#c1c7cf] mb-4">
-          <input
-            type="text"
-            readOnly
-            value={pixKey}
-            className="bg-transparent font-['Be_Vietnam_Pro'] text-xs text-[#191c1e] w-full px-2 outline-none font-mono"
-          />
+        <div className="bg-[#f7f9fb] p-4 rounded-2xl border border-[#e0e3e5] flex items-center justify-between gap-2 mb-6">
+          <span className="font-mono text-xs text-[#074469] font-bold truncate">{pixKey}</span>
           <button
-            onClick={copyPix}
-            className="bg-[#074469] text-white text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-[#2a5c82] transition-colors whitespace-nowrap cursor-pointer"
+            onClick={handleCopy}
+            className="bg-[#074469] hover:bg-[#2a5c82] text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors shrink-0 cursor-pointer"
           >
-            {copied ? 'Copiado!' : 'Copiar'}
+            {copied ? 'Copiado! ✓' : 'Copiar Chave'}
           </button>
         </div>
 
         <button
           onClick={onClose}
-          className="w-full text-[#41474e] hover:text-[#191c1e] text-xs font-semibold py-2"
+          className="w-full bg-[#f2f4f6] hover:bg-[#e0e3e5] text-[#191c1e] font-semibold py-2.5 rounded-xl text-xs"
         >
           Fechar
         </button>
@@ -692,7 +752,7 @@ export const ApoioPixModal: React.FC<{ onClose: () => void }> = ({ onClose }) =>
   );
 };
 
-/* 5. Triagem Foster Request Details Modal */
+/* 5. Foster Details Modal */
 export const FosterDetailsModal: React.FC<{
   request: FosterRequest;
   onClose: () => void;
@@ -700,42 +760,29 @@ export const FosterDetailsModal: React.FC<{
 }> = ({ request, onClose, onAccept }) => {
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl max-w-lg w-full p-6 md:p-8 shadow-2xl border border-[#e0e3e5] relative animate-in fade-in zoom-in duration-200">
+      <div className="bg-white rounded-3xl max-w-lg w-full p-6 md:p-8 shadow-2xl border border-[#e0e3e5] relative animate-in fade-in zoom-in duration-200">
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-[#72787f] hover:text-[#191c1e] p-1.5 rounded-full hover:bg-[#e0e3e5]"
+          className="absolute top-5 right-5 text-[#72787f] hover:text-[#191c1e] p-1.5 rounded-full hover:bg-[#e0e3e5] cursor-pointer"
         >
           <span className="material-symbols-outlined">close</span>
         </button>
 
-        <span className="bg-[#ffdbc9] text-[#331200] px-3 py-1 rounded-full text-xs font-bold font-['Be_Vietnam_Pro']">
-          Triagem de Acolhimento
-        </span>
-
-        <h3 className="font-['Plus_Jakarta_Sans'] text-2xl font-bold text-[#074469] mt-3 mb-1">
-          {request.petName || 'Animal Resgatado'} ({request.species})
+        <h3 className="font-['Plus_Jakarta_Sans'] text-2xl font-bold text-[#074469] mb-4">
+          Detalhes da Triagem
         </h3>
-        <p className="text-xs text-[#72787f] mb-4">Recebido: {request.timestamp}</p>
 
-        <div className="bg-[#f7f9fb] p-4 rounded-xl border border-[#e0e3e5] space-y-3 font-['Be_Vietnam_Pro'] text-sm text-[#41474e] mb-6">
-          <p>
-            <strong>Tutor solicitante:</strong> {request.requesterName || 'Não informado'}
-          </p>
-          <p>
-            <strong>Contato:</strong> {request.phone || '(11) 98765-4321'}
-          </p>
-          <div>
-            <strong>Motivo informado:</strong>
-            <p className="mt-1 text-xs sm:text-sm text-[#191c1e] bg-white p-3 rounded-lg border border-[#c1c7cf]/40 leading-relaxed">
-              {request.reason}
-            </p>
-          </div>
+        <div className="bg-[#f7f9fb] p-4 rounded-2xl border border-[#e0e3e5] space-y-2 text-xs font-['Be_Vietnam_Pro'] text-[#41474e] mb-6">
+          <p><strong>Animal:</strong> {request.petName} ({request.species})</p>
+          <p><strong>Solicitante:</strong> {request.requesterName || 'Adotante'}</p>
+          <p><strong>Telefone / WhatsApp:</strong> {request.phone || 'Não informado'}</p>
+          <p><strong>Motivo / Histórico:</strong> {request.reason}</p>
         </div>
 
         <div className="flex gap-3">
           <button
             onClick={onClose}
-            className="flex-1 bg-[#eceef0] hover:bg-[#e0e3e5] text-[#191c1e] font-semibold py-2.5 rounded-xl text-sm"
+            className="flex-1 bg-[#f2f4f6] hover:bg-[#e0e3e5] text-[#191c1e] font-bold py-2.5 rounded-xl text-xs cursor-pointer"
           >
             Fechar
           </button>
@@ -744,7 +791,7 @@ export const FosterDetailsModal: React.FC<{
               onAccept();
               onClose();
             }}
-            className="flex-1 bg-[#126b57] hover:bg-[#005141] text-white font-semibold py-2.5 rounded-xl text-sm shadow-sm"
+            className="flex-1 bg-[#126b57] hover:bg-[#005141] text-white font-bold py-2.5 rounded-xl text-xs transition-colors cursor-pointer shadow-xs"
           >
             Aceitar Acolhimento
           </button>
@@ -754,7 +801,7 @@ export const FosterDetailsModal: React.FC<{
   );
 };
 
-/* 6. Profile Analysis Modal for Adoption */
+/* 6. Profile Analysis Modal */
 export const ProfileAnalysisModal: React.FC<{
   solicitation: Solicitation;
   onClose: () => void;
@@ -762,61 +809,29 @@ export const ProfileAnalysisModal: React.FC<{
 }> = ({ solicitation, onClose, onApprove }) => {
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl max-w-lg w-full p-6 md:p-8 shadow-2xl border border-[#e0e3e5] relative animate-in fade-in zoom-in duration-200">
+      <div className="bg-white rounded-3xl max-w-lg w-full p-6 md:p-8 shadow-2xl border border-[#e0e3e5] relative animate-in fade-in zoom-in duration-200">
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-[#72787f] hover:text-[#191c1e] p-1.5 rounded-full hover:bg-[#e0e3e5]"
+          className="absolute top-5 right-5 text-[#72787f] hover:text-[#191c1e] p-1.5 rounded-full hover:bg-[#e0e3e5] cursor-pointer"
         >
           <span className="material-symbols-outlined">close</span>
         </button>
 
-        <div className="flex items-center gap-2 mb-2">
-          <span className="material-symbols-outlined text-[#074469]">person_search</span>
-          <h3 className="font-['Plus_Jakarta_Sans'] text-2xl font-bold text-[#074469]">
-            Análise de Perfil do Candidato
-          </h3>
-        </div>
+        <h3 className="font-['Plus_Jakarta_Sans'] text-2xl font-bold text-[#074469] mb-4">
+          Análise de Adoção: {solicitation.petName}
+        </h3>
 
-        <p className="font-['Be_Vietnam_Pro'] text-xs text-[#72787f] mb-4">
-          Solicitação para adoção de: <strong className="text-[#074469]">{solicitation.petName}</strong>
-        </p>
-
-        <div className="bg-[#f7f9fb] p-4 rounded-xl border border-[#e0e3e5] space-y-3 font-['Be_Vietnam_Pro'] text-sm text-[#41474e] mb-6">
-          <div className="flex justify-between pb-2 border-b border-[#e0e3e5]">
-            <span>Candidato(a):</span>
-            <strong className="text-[#191c1e]">{solicitation.requesterName}</strong>
-          </div>
-          <div className="flex justify-between pb-2 border-b border-[#e0e3e5]">
-            <span>Telefone / WhatsApp:</span>
-            <strong className="text-[#074469]">{solicitation.phone || '(19) 99221-7788'}</strong>
-          </div>
-          <div className="flex justify-between pb-2 border-b border-[#e0e3e5]">
-            <span>E-mail:</span>
-            <span className="text-[#191c1e]">{solicitation.email || 'candidato@email.com'}</span>
-          </div>
-          <div className="space-y-1">
-            <span className="font-semibold text-xs text-[#72787f] uppercase">Checklist do questionário:</span>
-            <ul className="text-xs space-y-1 text-[#191c1e]">
-              <li className="flex items-center gap-1 text-[#126b57]">
-                <span className="material-symbols-outlined text-sm">check_circle</span>
-                Residência com telas e proteção adequada
-              </li>
-              <li className="flex items-center gap-1 text-[#126b57]">
-                <span className="material-symbols-outlined text-sm">check_circle</span>
-                Todos os moradores da casa estão de acordo
-              </li>
-              <li className="flex items-center gap-1 text-[#126b57]">
-                <span className="material-symbols-outlined text-sm">check_circle</span>
-                Disponibilidade financeira para vacinas e cuidados veterinários
-              </li>
-            </ul>
-          </div>
+        <div className="bg-[#f7f9fb] p-4 rounded-2xl border border-[#e0e3e5] space-y-2 text-xs font-['Be_Vietnam_Pro'] text-[#41474e] mb-6">
+          <p><strong>Candidato Adotante:</strong> {solicitation.requesterName}</p>
+          <p><strong>Telefone / WhatsApp:</strong> {solicitation.phone || 'Não informado'}</p>
+          <p><strong>E-mail:</strong> {solicitation.email || 'Não informado'}</p>
+          <p><strong>Detalhes / Residência:</strong> {solicitation.dateOrDetails}</p>
         </div>
 
         <div className="flex gap-3">
           <button
             onClick={onClose}
-            className="flex-1 bg-[#eceef0] hover:bg-[#e0e3e5] text-[#191c1e] font-semibold py-2.5 rounded-xl text-sm"
+            className="flex-1 bg-[#f2f4f6] hover:bg-[#e0e3e5] text-[#191c1e] font-bold py-2.5 rounded-xl text-xs cursor-pointer"
           >
             Fechar
           </button>
@@ -825,9 +840,9 @@ export const ProfileAnalysisModal: React.FC<{
               onApprove();
               onClose();
             }}
-            className="flex-1 bg-[#074469] hover:bg-[#2a5c82] text-white font-semibold py-2.5 rounded-xl text-sm shadow-sm"
+            className="flex-1 bg-[#126b57] hover:bg-[#005141] text-white font-bold py-2.5 rounded-xl text-xs transition-colors cursor-pointer shadow-xs"
           >
-            Aprovar Adoção
+            Conceder Adoção
           </button>
         </div>
       </div>

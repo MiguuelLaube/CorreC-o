@@ -22,7 +22,7 @@ export const AboutView: React.FC<AboutViewProps> = ({
           Conectando quem quer amar a quem precisa de um lar
         </h1>
         <p className="font-['Be_Vietnam_Pro'] text-base md:text-lg text-[#41474e] leading-relaxed">
-          O CorrenteCão nasceu para unir abrigos, ONGs dedicadas e futuros tutores responsáveis por meio de uma plataforma simples, transparente e acolhedora.
+          O MatchPet nasceu para unir abrigos, ONGs dedicadas e futuros tutores responsáveis por meio de uma plataforma simples, transparente e acolhedora.
         </p>
       </section>
 

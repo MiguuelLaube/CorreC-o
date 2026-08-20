@@ -3,12 +3,12 @@ import { INITIAL_PETS, INITIAL_ONGS, INITIAL_SOLICITATIONS, INITIAL_FOSTER_REQUE
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
 const STORAGE_KEYS = {
-  PETS: 'correntecao_pets',
-  ONGS: 'correntecao_ongs',
-  SOLICITATIONS: 'correntecao_solicitations',
-  FOSTER_REQUESTS: 'correntecao_foster_requests',
-  PARTNERS: 'correntecao_partners',
-  INITIALIZED: 'correntecao_initialized_v2'
+  PETS: 'matchpet_pets_store_v2',
+  ONGS: 'matchpet_ongs_store_v2',
+  SOLICITATIONS: 'matchpet_solicitations_store_v2',
+  FOSTER_REQUESTS: 'matchpet_foster_requests_store_v2',
+  PARTNERS: 'matchpet_partners_store_v2',
+  INITIALIZED: 'matchpet_initialized_v3'
 };
 
 // ==========================================
@@ -19,7 +19,6 @@ function getLocal<T>(key: string, defaultValue: T): T {
     const item = localStorage.getItem(key);
     return item ? JSON.parse(item) : defaultValue;
   } catch (error) {
-    console.error(`Erro ao ler localStorage (${key}):`, error);
     return defaultValue;
   }
 }
@@ -43,7 +42,6 @@ function ensureLocalInitialized(): void {
   }
 }
 
-// Inicializar na carga do módulo
 if (typeof window !== 'undefined') {
   ensureLocalInitialized();
 }
@@ -55,14 +53,14 @@ function mapPetFromSupabase(row: any): Pet {
   return {
     id: String(row.id),
     name: row.name || row.nome || '',
-    species: (row.species || (row.especie === 'cao' ? 'Cachorro' : row.especie === 'gato' ? 'Gato' : 'Cachorro')) as any,
+    species: (row.species || (row.especie === 'gato' ? 'Gato' : 'Cachorro')) as any,
     breed: row.breed || 'SRD',
     city: row.city || 'São Paulo',
     state: row.state || 'SP',
     age: row.age || (row.idade_aproximada ? `${row.idade_aproximada}` : '2 anos'),
-    ageGroup: (row.age_group || (row.idade_aproximada === 'filhote' ? 'Filhote' : row.idade_aproximada === 'idoso' ? 'Idoso' : 'Adulto')) as any,
-    gender: (row.gender || (row.genero === 'macho' ? 'Macho' : 'Fêmea')) as any,
-    size: (row.size || (row.porte === 'pequeno' ? 'Pequeno' : row.porte === 'grande' ? 'Grande' : 'Médio')) as any,
+    ageGroup: (row.age_group || 'Adulto') as any,
+    gender: (row.gender || (row.genero === 'femea' ? 'Fêmea' : 'Macho')) as any,
+    size: (row.size || 'Médio') as any,
     color: row.color || row.cor || 'Caramelo',
     vaccination: row.vaccination || (row.vacinado ? 'Vacinado' : 'Pendente'),
     castrated: Boolean(row.castrated ?? row.castrado),
@@ -70,10 +68,10 @@ function mapPetFromSupabase(row: any): Pet {
     specialNeeds: Boolean(row.special_needs ?? false),
     mainImage: row.main_image || (Array.isArray(row.fotos) && row.fotos[0]) || 'https://images.unsplash.com/photo-1543466835-00a7907e9de1',
     galleryImages: row.gallery_images || (Array.isArray(row.fotos) ? row.fotos.slice(1) : []),
-    ongId: String(row.ong_id || 'amigos-de-patas'),
-    ongName: row.ong_name || 'ONG Amigo Fiel',
+    ongId: String(row.ong_id || 'ong-amigos-de-patas'),
+    ongName: row.ong_name || 'ONG Parceira',
     entryDate: row.entry_date || new Date().toLocaleDateString('pt-BR'),
-    status: (row.status === 'disponivel' ? 'Disponível' : row.status === 'em_processo' ? 'Em Processo' : row.status === 'adotado' ? 'Adotado' : (row.status || 'Disponível')) as any,
+    status: (row.status || 'Disponível') as any,
     favorite: Boolean(row.favorite)
   };
 }
@@ -97,8 +95,8 @@ function mapPetToSupabase(pet: Pet): any {
     special_needs: pet.specialNeeds ?? false,
     main_image: pet.mainImage,
     gallery_images: pet.galleryImages || [],
-    ong_id: pet.ongId || 'amigos-de-patas',
-    ong_name: pet.ongName || 'ONG Amigo Fiel',
+    ong_id: pet.ongId || 'ong-amigos-de-patas',
+    ong_name: pet.ongName || 'ONG Parceira',
     entry_date: pet.entryDate,
     status: pet.status,
     favorite: pet.favorite ?? false
@@ -108,12 +106,14 @@ function mapPetToSupabase(pet: Pet): any {
 function mapOngFromSupabase(row: any): ONG {
   return {
     id: String(row.id),
+    cnpj: row.cnpj || '00.000.000/0001-00',
     name: row.name || row.nome_fantasia || row.razao_social || 'ONG Parceira',
-    city: row.city || (row.endereco ? row.endereco.split(',')[0] : 'São Paulo'),
+    city: row.city || 'São Paulo',
     state: row.state || 'SP',
     phone: row.phone || row.telefone_whatsapp || '(11) 98765-4321',
     email: row.email || 'contato@ongparceira.org.br',
-    address: row.endereco || row.address || 'São Paulo, SP',
+    passwordHash: row.senha_hash || row.password_hash,
+    address: row.address || row.endereco || 'São Paulo, SP',
     image: row.image || 'https://images.unsplash.com/photo-1548199973-03cce0bbc87b',
     description: row.description || '',
     petsCount: row.pets_count || 0,
@@ -124,11 +124,14 @@ function mapOngFromSupabase(row: any): ONG {
 function mapOngToSupabase(ong: ONG): any {
   return {
     id: ong.id,
+    cnpj: ong.cnpj,
     name: ong.name,
     city: ong.city,
     state: ong.state,
     phone: ong.phone,
     email: ong.email,
+    senha_hash: ong.passwordHash,
+    address: ong.address,
     image: ong.image,
     description: ong.description,
     pets_count: ong.petsCount,
@@ -150,7 +153,7 @@ function mapSolicitationFromSupabase(row: any): Solicitation {
     adoptionGranted: Boolean(row.adoption_granted ?? (row.status === 'approved' && row.type === 'Adoção')),
     phone: row.phone || '',
     email: row.email || '',
-    ongId: row.ong_id || 'amigos-de-patas',
+    ongId: row.ong_id || 'ong-amigos-de-patas',
     ongName: row.ong_name || 'Amigos de Patas',
     ongPhone: row.ong_phone || '(11) 98765-4321',
     ongEmail: row.ong_email || 'contato@amigosdepatas.org.br',
@@ -170,6 +173,7 @@ function mapSolicitationToSupabase(sol: Solicitation): any {
     requester_email: sol.requesterEmail || sol.email,
     date_or_details: sol.dateOrDetails,
     status: sol.status,
+    adoption_granted: sol.adoptionGranted ?? false,
     phone: sol.phone,
     email: sol.email,
     ong_id: sol.ongId,
@@ -184,17 +188,18 @@ function mapFosterFromSupabase(row: any): FosterRequest {
   return {
     id: String(row.id),
     petName: row.pet_name || '',
-    species: row.species || (row.dados_animal_proprio?.especie) || 'Cachorro',
+    species: row.species || 'Cachorro',
     reason: row.reason || row.mensagem || '',
     timestamp: row.timestamp || (row.created_at ? new Date(row.created_at).toLocaleTimeString('pt-BR') : new Date().toLocaleTimeString('pt-BR')),
     status: (row.status === 'aprovada' ? 'accepted' : row.status === 'recusada' ? 'declined' : (row.status || 'pending')) as any,
-    photoUrl: row.photo_url || row.dados_animal_proprio?.foto,
+    photoUrl: row.photo_url,
     requesterName: row.requester_name,
     requesterEmail: row.requester_email || row.email,
     phone: row.phone,
-    acceptedByOngName: row.accepted_by_ong_name || (row.status === 'accepted' ? 'Amigos de Patas' : undefined),
-    acceptedByOngPhone: row.accepted_by_ong_phone || (row.status === 'accepted' ? '(11) 98765-4321' : undefined),
-    acceptedByOngAddress: row.accepted_by_ong_address || (row.status === 'accepted' ? 'Av. Paulista, 1200 - São Paulo, SP' : undefined)
+    acceptedByOngId: row.accepted_by_ong_id,
+    acceptedByOngName: row.accepted_by_ong_name,
+    acceptedByOngPhone: row.accepted_by_ong_phone,
+    acceptedByOngAddress: row.accepted_by_ong_address
   };
 }
 
@@ -210,71 +215,49 @@ function mapFosterToSupabase(foster: FosterRequest): any {
     requester_name: foster.requesterName,
     requester_email: foster.requesterEmail,
     phone: foster.phone,
+    accepted_by_ong_id: foster.acceptedByOngId,
     accepted_by_ong_name: foster.acceptedByOngName,
     accepted_by_ong_phone: foster.acceptedByOngPhone,
     accepted_by_ong_address: foster.acceptedByOngAddress
   };
 }
 
-function mapPartnerFromSupabase(row: any): Partner {
-  return {
-    id: String(row.id),
-    name: row.name || row.nome,
-    category: row.category || row.tipo || 'Parceiro',
-    tagline: row.tagline || row.tipo || '',
-    image: row.image || row.logo_url || 'https://images.unsplash.com/photo-1583511655857-d19b40a7a54e',
-    url: row.url || row.link_contato || '#',
-    badge: row.badge,
-    discountOrBenefit: row.discount_or_benefit
-  };
-}
-
-function mapPartnerToSupabase(p: Partner): any {
-  return {
-    id: p.id,
-    name: p.name,
-    category: p.category,
-    tagline: p.tagline,
-    image: p.image,
-    url: p.url,
-    badge: p.badge,
-    discount_or_benefit: p.discountOrBenefit
-  };
-}
-
 // ==========================================
-// SERVIÇO DE BANCO DE DADOS UNIFICADO (DB SERVICE)
+// SERVIÇO DE BANCO DE DADOS UNIFICADO (COM ISOLAMENTO POR ONG)
 // ==========================================
 export const dbService = {
   // ----------------------------------------
-  // PETS
+  // PETS (ISOLAMENTO POR ONG DISPONÍVEL)
   // ----------------------------------------
-  async getPets(): Promise<Pet[]> {
+  async getPets(filterOngId?: string): Promise<Pet[]> {
+    let allPets: Pet[] = [];
+
     if (isSupabaseConfigured) {
       try {
-        const { data, error } = await supabase
-          .from('pets')
-          .select('*')
-          .order('created_at', { ascending: false });
+        let query = supabase.from('pets').select('*').order('created_at', { ascending: false });
+        if (filterOngId) {
+          query = query.eq('ong_id', filterOngId);
+        }
+        const { data, error } = await query;
 
         if (!error && data && data.length > 0) {
-          const mapped = data.map(mapPetFromSupabase);
-          setLocal(STORAGE_KEYS.PETS, mapped);
-          return mapped;
-        }
-
-        // Se a tabela estiver vazia, faz o seed inicial
-        if (!error && data && data.length === 0) {
+          allPets = data.map(mapPetFromSupabase);
+        } else if (!error && data && data.length === 0 && !filterOngId) {
           const seeds = INITIAL_PETS.map(mapPetToSupabase);
-          await supabase.from('pets').insert(seeds);
-          setLocal(STORAGE_KEYS.PETS, INITIAL_PETS);
-          return INITIAL_PETS;
+          await supabase.from('pets').upsert(seeds);
+          allPets = INITIAL_PETS;
         }
       } catch (err) {
         console.warn('Falha ao buscar pets no Supabase, usando local:', err);
       }
     }
-    return getLocal<Pet[]>(STORAGE_KEYS.PETS, INITIAL_PETS);
+
+    if (allPets.length === 0) {
+      const local = getLocal<Pet[]>(STORAGE_KEYS.PETS, INITIAL_PETS);
+      allPets = filterOngId ? local.filter((p) => p.ongId === filterOngId) : local;
+    }
+
+    return allPets;
   },
 
   async savePet(pet: Pet): Promise<Pet> {
@@ -293,10 +276,9 @@ export const dbService = {
     if (isSupabaseConfigured) {
       try {
         const payload = mapPetToSupabase(pet);
-        const { error } = await supabase.from('pets').upsert(payload);
-        if (error) console.error('Erro ao salvar pet no Supabase:', error);
+        await supabase.from('pets').upsert(payload);
       } catch (err) {
-        console.error('Falha de conexão com Supabase ao salvar pet:', err);
+        console.error('Falha de conexão ao salvar pet no Supabase:', err);
       }
     }
 
@@ -310,10 +292,9 @@ export const dbService = {
 
     if (isSupabaseConfigured) {
       try {
-        const { error } = await supabase.from('pets').delete().eq('id', petId);
-        if (error) console.error('Erro ao deletar pet no Supabase:', error);
+        await supabase.from('pets').delete().eq('id', petId);
       } catch (err) {
-        console.error('Falha de conexão com Supabase ao deletar pet:', err);
+        console.error('Falha ao deletar pet no Supabase:', err);
       }
     }
   },
@@ -325,10 +306,9 @@ export const dbService = {
 
     if (isSupabaseConfigured) {
       try {
-        const { error } = await supabase.from('pets').update({ status }).eq('id', petId);
-        if (error) console.error('Erro ao atualizar status no Supabase:', error);
+        await supabase.from('pets').update({ status }).eq('id', petId);
       } catch (err) {
-        console.error('Falha de conexão com Supabase ao atualizar status:', err);
+        console.error('Falha ao atualizar status no Supabase:', err);
       }
     }
   },
@@ -349,7 +329,7 @@ export const dbService = {
       try {
         await supabase.from('pets').update({ favorite: newFavState }).eq('id', petId);
       } catch (err) {
-        console.error('Erro ao sincronizar favorito com Supabase:', err);
+        console.error('Erro ao sincronizar favorito:', err);
       }
     }
 
@@ -357,7 +337,7 @@ export const dbService = {
   },
 
   // ----------------------------------------
-  // ONGS
+  // ONGS (ADMIN GESTÃO E VITRINE PÚBLICA)
   // ----------------------------------------
   async getOngs(): Promise<ONG[]> {
     if (isSupabaseConfigured) {
@@ -370,7 +350,7 @@ export const dbService = {
         }
         if (!error && data && data.length === 0) {
           const seeds = INITIAL_ONGS.map(mapOngToSupabase);
-          await supabase.from('ongs').insert(seeds);
+          await supabase.from('ongs').upsert(seeds);
           setLocal(STORAGE_KEYS.ONGS, INITIAL_ONGS);
           return INITIAL_ONGS;
         }
@@ -407,32 +387,44 @@ export const dbService = {
   },
 
   // ----------------------------------------
-  // SOLICITAÇÕES (VISITAS E ADOÇÕES)
+  // SOLICITAÇÕES (ISOLAMENTO POR ONG OU ADOTANTE)
   // ----------------------------------------
-  async getSolicitations(): Promise<Solicitation[]> {
+  async getSolicitations(filterOngId?: string, filterUserEmail?: string): Promise<Solicitation[]> {
+    let all: Solicitation[] = [];
+
     if (isSupabaseConfigured) {
       try {
-        const { data, error } = await supabase
-          .from('solicitations')
-          .select('*')
-          .order('created_at', { ascending: false });
+        let query = supabase.from('solicitations').select('*').order('created_at', { ascending: false });
+        if (filterOngId) {
+          query = query.eq('ong_id', filterOngId);
+        }
+        if (filterUserEmail) {
+          query = query.eq('requester_email', filterUserEmail.toLowerCase());
+        }
+        const { data, error } = await query;
 
         if (!error && data && data.length > 0) {
-          const mapped = data.map(mapSolicitationFromSupabase);
-          setLocal(STORAGE_KEYS.SOLICITATIONS, mapped);
-          return mapped;
-        }
-        if (!error && data && data.length === 0) {
+          all = data.map(mapSolicitationFromSupabase);
+        } else if (!error && data && data.length === 0 && !filterOngId && !filterUserEmail) {
           const seeds = INITIAL_SOLICITATIONS.map(mapSolicitationToSupabase);
           await supabase.from('solicitations').upsert(seeds);
-          setLocal(STORAGE_KEYS.SOLICITATIONS, INITIAL_SOLICITATIONS);
-          return INITIAL_SOLICITATIONS;
+          all = INITIAL_SOLICITATIONS;
         }
       } catch (err) {
         console.warn('Falha ao buscar solicitações no Supabase:', err);
       }
     }
-    return getLocal<Solicitation[]>(STORAGE_KEYS.SOLICITATIONS, INITIAL_SOLICITATIONS);
+
+    if (all.length === 0) {
+      const local = getLocal<Solicitation[]>(STORAGE_KEYS.SOLICITATIONS, INITIAL_SOLICITATIONS);
+      all = local.filter((s) => {
+        if (filterOngId && s.ongId !== filterOngId) return false;
+        if (filterUserEmail && s.requesterEmail?.toLowerCase() !== filterUserEmail.toLowerCase()) return false;
+        return true;
+      });
+    }
+
+    return all;
   },
 
   async saveSolicitation(solicitation: Solicitation): Promise<Solicitation> {
@@ -454,22 +446,24 @@ export const dbService = {
 
   async updateSolicitationStatus(id: string, status: 'approved' | 'rejected' | 'pending'): Promise<void> {
     const current = getLocal<Solicitation[]>(STORAGE_KEYS.SOLICITATIONS, INITIAL_SOLICITATIONS);
-    const updated = current.map((s) => (s.id === id ? { ...s, status } : s));
+    const updated = current.map((s) => (s.id === id ? { ...s, status, adoptionGranted: status === 'approved' } : s));
     setLocal(STORAGE_KEYS.SOLICITATIONS, updated);
 
     if (isSupabaseConfigured) {
       try {
-        await supabase.from('solicitations').update({ status }).eq('id', id);
+        await supabase.from('solicitations').update({ status, adoption_granted: status === 'approved' }).eq('id', id);
       } catch (err) {
-        console.error('Erro ao atualizar status da solicitação no Supabase:', err);
+        console.error('Erro ao atualizar status no Supabase:', err);
       }
     }
   },
 
   // ----------------------------------------
-  // PEDIDOS DE ACOLHIMENTO (FOSTER REQUESTS)
+  // PEDIDOS DE ACOLHIMENTO E TRIAGEM
   // ----------------------------------------
-  async getFosterRequests(): Promise<FosterRequest[]> {
+  async getFosterRequests(filterOngId?: string, filterUserEmail?: string): Promise<FosterRequest[]> {
+    let all: FosterRequest[] = [];
+
     if (isSupabaseConfigured) {
       try {
         const { data, error } = await supabase
@@ -478,21 +472,30 @@ export const dbService = {
           .order('created_at', { ascending: false });
 
         if (!error && data && data.length > 0) {
-          const mapped = data.map(mapFosterFromSupabase);
-          setLocal(STORAGE_KEYS.FOSTER_REQUESTS, mapped);
-          return mapped;
-        }
-        if (!error && data && data.length === 0) {
+          all = data.map(mapFosterFromSupabase);
+        } else if (!error && data && data.length === 0 && !filterOngId && !filterUserEmail) {
           const seeds = INITIAL_FOSTER_REQUESTS.map(mapFosterToSupabase);
           await supabase.from('foster_requests').upsert(seeds);
-          setLocal(STORAGE_KEYS.FOSTER_REQUESTS, INITIAL_FOSTER_REQUESTS);
-          return INITIAL_FOSTER_REQUESTS;
+          all = INITIAL_FOSTER_REQUESTS;
         }
       } catch (err) {
-        console.warn('Falha ao buscar pedidos de acolhimento no Supabase:', err);
+        console.warn('Falha ao buscar acolhimentos no Supabase:', err);
       }
     }
-    return getLocal<FosterRequest[]>(STORAGE_KEYS.FOSTER_REQUESTS, INITIAL_FOSTER_REQUESTS);
+
+    if (all.length === 0) {
+      all = getLocal<FosterRequest[]>(STORAGE_KEYS.FOSTER_REQUESTS, INITIAL_FOSTER_REQUESTS);
+    }
+
+    // Filtrar com segurança se especificado
+    if (filterOngId) {
+      all = all.filter((f) => f.acceptedByOngId === filterOngId || f.status === 'pending');
+    }
+    if (filterUserEmail) {
+      all = all.filter((f) => f.requesterEmail?.toLowerCase() === filterUserEmail.toLowerCase());
+    }
+
+    return all;
   },
 
   async saveFosterRequest(foster: FosterRequest): Promise<FosterRequest> {
@@ -512,16 +515,40 @@ export const dbService = {
     return foster;
   },
 
-  async updateFosterStatus(id: string, status: 'accepted' | 'declined' | 'pending'): Promise<void> {
+  async updateFosterStatus(
+    id: string,
+    status: 'accepted' | 'declined' | 'pending',
+    ongInfo?: { id: string; name: string; phone: string; address: string }
+  ): Promise<void> {
     const current = getLocal<FosterRequest[]>(STORAGE_KEYS.FOSTER_REQUESTS, INITIAL_FOSTER_REQUESTS);
-    const updated = current.map((f) => (f.id === id ? { ...f, status } : f));
+    const updated = current.map((f) =>
+      f.id === id
+        ? {
+            ...f,
+            status,
+            acceptedByOngId: ongInfo?.id || f.acceptedByOngId,
+            acceptedByOngName: ongInfo?.name || f.acceptedByOngName,
+            acceptedByOngPhone: ongInfo?.phone || f.acceptedByOngPhone,
+            acceptedByOngAddress: ongInfo?.address || f.acceptedByOngAddress
+          }
+        : f
+    );
     setLocal(STORAGE_KEYS.FOSTER_REQUESTS, updated);
 
     if (isSupabaseConfigured) {
       try {
-        await supabase.from('foster_requests').update({ status }).eq('id', id);
+        await supabase
+          .from('foster_requests')
+          .update({
+            status,
+            accepted_by_ong_id: ongInfo?.id,
+            accepted_by_ong_name: ongInfo?.name,
+            accepted_by_ong_phone: ongInfo?.phone,
+            accepted_by_ong_address: ongInfo?.address
+          })
+          .eq('id', id);
       } catch (err) {
-        console.error('Erro ao atualizar status do acolhimento no Supabase:', err);
+        console.error('Erro ao atualizar acolhimento no Supabase:', err);
       }
     }
   },
@@ -530,39 +557,6 @@ export const dbService = {
   // PARCEIROS (PARTNERS)
   // ----------------------------------------
   async getPartners(): Promise<Partner[]> {
-    if (isSupabaseConfigured) {
-      try {
-        const { data, error } = await supabase
-          .from('partners')
-          .select('*')
-          .order('created_at', { ascending: false });
-
-        if (!error && data && data.length > 0) {
-          const mapped = data.map(mapPartnerFromSupabase);
-          setLocal(STORAGE_KEYS.PARTNERS, mapped);
-          return mapped;
-        }
-        if (!error && data && data.length === 0) {
-          const seeds = PARTNERS_LIST.map(mapPartnerToSupabase);
-          await supabase.from('partners').insert(seeds);
-          setLocal(STORAGE_KEYS.PARTNERS, PARTNERS_LIST);
-          return PARTNERS_LIST;
-        }
-      } catch (err) {
-        console.warn('Falha ao buscar parceiros no Supabase:', err);
-      }
-    }
-    return getLocal<Partner[]>(STORAGE_KEYS.PARTNERS, PARTNERS_LIST);
-  },
-
-  // ----------------------------------------
-  // Reset / Restauração para testes
-  // ----------------------------------------
-  resetToDefaults(): void {
-    setLocal(STORAGE_KEYS.PETS, INITIAL_PETS);
-    setLocal(STORAGE_KEYS.ONGS, INITIAL_ONGS);
-    setLocal(STORAGE_KEYS.SOLICITATIONS, INITIAL_SOLICITATIONS);
-    setLocal(STORAGE_KEYS.FOSTER_REQUESTS, INITIAL_FOSTER_REQUESTS);
-    setLocal(STORAGE_KEYS.PARTNERS, PARTNERS_LIST);
+    return PARTNERS_LIST;
   }
 };

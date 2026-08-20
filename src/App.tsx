@@ -1,46 +1,46 @@
 import React, { useState, useEffect } from 'react';
-import { Pet, ONG, Solicitation, FosterRequest, ActiveTab, User } from './types';
+import { Pet, ONG, Solicitation, FosterRequest, ActiveTab, User, OngSession } from './types';
 import { INITIAL_PETS, INITIAL_ONGS, INITIAL_SOLICITATIONS, INITIAL_FOSTER_REQUESTS } from './data/initialData';
 import { dbService } from './services/db';
 import { authService } from './services/authService';
-import { isSupabaseConfigured } from './lib/supabase';
 import {
   Navbar,
   Footer,
   AdoptionView,
   OngsView,
   PetDetailView,
+  AdminDashboardView,
   OngDashboardView,
+  UserAdoptionsView,
   FosterFormView,
   AboutView,
-  UserPortalViews,
   AdoptionInterestModal,
   IndicarOngModal,
   AuthModal,
   ApoioPixModal,
   FosterDetailsModal,
-  ProfileAnalysisModal,
+  ProfileAnalysisModal
 } from './components';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('adotar');
   const [selectedPet, setSelectedPet] = useState<Pet | null>(null);
 
-  // Authentication State
+  // Dois sistemas de autenticação 100% independentes
   const [currentUser, setCurrentUser] = useState<User | null>(() => authService.getCurrentUser());
+  const [currentOng, setCurrentOng] = useState<OngSession | null>(() => authService.getCurrentOngSession());
 
-  // Core dynamic state
+  // Dados dinâmicos do MatchPet
   const [pets, setPets] = useState<Pet[]>([]);
   const [ongs, setOngs] = useState<ONG[]>([]);
   const [solicitations, setSolicitations] = useState<Solicitation[]>([]);
   const [fosterRequests, setFosterRequests] = useState<FosterRequest[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
 
-  // Carregar dados persistidos e inicializar conta admin
+  // Carregar dados e inicializar banco
   useEffect(() => {
     async function loadData() {
       try {
-        // Inicializa a conta de administrador no banco (se necessário)
         await authService.init();
 
         const [loadedPets, loadedOngs, loadedSols, loadedFosters] = await Promise.all([
@@ -54,7 +54,7 @@ export default function App() {
         setSolicitations(loadedSols);
         setFosterRequests(loadedFosters);
       } catch (err) {
-        console.error('Erro ao carregar dados do banco:', err);
+        console.error('Erro ao carregar dados do MatchPet:', err);
         setPets(INITIAL_PETS);
         setOngs(INITIAL_ONGS);
         setSolicitations(INITIAL_SOLICITATIONS);
@@ -66,10 +66,10 @@ export default function App() {
     loadData();
   }, []);
 
-  // Modals state
+  // Modais
   const [petForInterestModal, setPetForInterestModal] = useState<Pet | null>(null);
   const [showIndicarOngModal, setShowIndicarOngModal] = useState<boolean>(false);
-  const [authModalMode, setAuthModalMode] = useState<'login' | 'register' | null>(null);
+  const [authModalProfile, setAuthModalProfile] = useState<'user' | 'ong' | null>(null);
   const [showPixModal, setShowPixModal] = useState<boolean>(false);
   const [activeFosterDetails, setActiveFosterDetails] = useState<FosterRequest | null>(null);
   const [activeSolicitationProfile, setActiveSolicitationProfile] = useState<Solicitation | null>(null);
@@ -84,27 +84,41 @@ export default function App() {
     }, 3500);
   };
 
-  // Auth Handlers
-  const handleLogout = () => {
-    authService.logout();
+  // Auth Handlers - Adotante
+  const handleLogoutUser = () => {
+    authService.logoutUser();
     setCurrentUser(null);
-    if (
-      activeTab === 'painel-ong' ||
-      activeTab === 'status-interesse' ||
-      activeTab === 'solicitacoes-adocao' ||
-      activeTab === 'triagem-incompleta'
-    ) {
+    if (activeTab === 'minhas-adocoes') {
       setActiveTab('adotar');
     }
-    triggerToast('Você encerrou a sessão.');
+    triggerToast('Sessão de adotante encerrada.');
   };
 
-  const handleAuthSuccess = (user: User) => {
+  // Auth Handlers - ONG / Admin
+  const handleLogoutOng = () => {
+    authService.logoutOng();
+    setCurrentOng(null);
+    if (activeTab === 'painel-ong' || activeTab === 'painel-admin') {
+      setActiveTab('adotar');
+    }
+    triggerToast('Sessão de ONG / Admin encerrada.');
+  };
+
+  const handleUserAuthSuccess = (user: User) => {
     setCurrentUser(user);
-    if (user.role === 'admin') {
-      triggerToast(`Bem-vindo, Administrador (${user.email})! Painel liberado.`);
+    triggerToast(`Bem-vindo(a) ao MatchPet, ${user.name}!`);
+    setAuthModalProfile(null);
+  };
+
+  const handleOngAuthSuccess = (session: OngSession) => {
+    setCurrentOng(session);
+    setAuthModalProfile(null);
+    if (session.role === 'admin') {
+      setActiveTab('painel-admin');
+      triggerToast(`Painel do Administrador Geral ativado (${session.email})!`);
     } else {
-      triggerToast(`Bem-vindo(a), ${user.name}!`);
+      setActiveTab('painel-ong');
+      triggerToast(`Painel da ONG ${session.name} acessado com sucesso!`);
     }
   };
 
@@ -118,64 +132,63 @@ export default function App() {
       setSelectedPet((prev) => (prev ? { ...prev, favorite: newFav } : null));
     }
     const petName = pets.find((p) => p.id === petId)?.name || 'Pet';
-    triggerToast(newFav ? `Adicionado aos favoritos: ${petName}` : `Removido dos favoritos: ${petName}`);
-  };
-
-  const handleSelectPet = (pet: Pet) => {
-    setSelectedPet(pet);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const handleBackToAdoption = () => {
-    setSelectedPet(null);
+    triggerToast(newFav ? `❤️ ${petName} adicionado aos favoritos!` : `💔 ${petName} removido dos favoritos.`);
   };
 
   const handleAddPet = async (newPetData: Partial<Pet>) => {
-    const id = `pet-${Date.now()}`;
-    const fullPet: Pet = {
-      id,
-      name: newPetData.name || 'Novo Pet',
-      age: newPetData.age || '1 ano',
-      size: newPetData.size || 'Médio',
+    if (!currentOng) {
+      triggerToast('Apenas ONGs credenciadas podem cadastrar pets.');
+      return;
+    }
+
+    const newPet: Pet = {
+      id: `pet-${Date.now()}`,
+      name: newPetData.name || 'Pet Sem Nome',
+      species: newPetData.species || 'Cachorro',
+      breed: newPetData.breed || 'SRD',
+      city: newPetData.city || currentOng.city || 'São Paulo',
+      state: newPetData.state || currentOng.state || 'SP',
+      age: newPetData.age || '2 anos',
+      ageGroup: newPetData.ageGroup || 'Adulto',
       gender: newPetData.gender || 'Macho',
+      size: newPetData.size || 'Médio',
+      color: newPetData.color || 'Caramelo',
       vaccination: newPetData.vaccination || 'Vacinado',
-      mainImage:
-        newPetData.mainImage ||
-        'https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&w=600&q=80',
-      galleryImages: [],
-      species: 'Cachorro',
-      city: 'São Paulo',
-      state: 'SP',
-      ongId: 'amigos-de-patas',
-      ongName: 'ONG Amigo Fiel',
+      castrated: newPetData.castrated ?? true,
+      dewormed: newPetData.dewormed ?? true,
+      specialNeeds: newPetData.specialNeeds ?? false,
+      mainImage: newPetData.mainImage || 'https://images.unsplash.com/photo-1543466835-00a7907e9de1',
+      galleryImages: newPetData.galleryImages || [],
+      ongId: currentOng.id,
+      ongName: currentOng.name,
       entryDate: new Date().toLocaleDateString('pt-BR'),
       status: 'Disponível',
       favorite: false
     };
 
-    await dbService.savePet(fullPet);
-    setPets((prev) => [fullPet, ...prev]);
-    triggerToast(`Pet ${fullPet.name} cadastrado com sucesso!`);
+    const saved = await dbService.savePet(newPet);
+    setPets((prev) => [saved, ...prev]);
+    triggerToast(`🐾 Pet "${saved.name}" cadastrado com sucesso para ${currentOng.name}!`);
   };
 
   const handleDeletePet = async (petId: string) => {
     await dbService.deletePet(petId);
     setPets((prev) => prev.filter((p) => p.id !== petId));
-    triggerToast('Pet removido do banco de dados.');
+    triggerToast('Pet removido do cadastro com sucesso.');
   };
 
-  const handleUpdatePetStatus = async (
-    petId: string,
-    status: 'Disponível' | 'Em Processo' | 'Adotado'
-  ) => {
+  const handleUpdatePetStatus = async (petId: string, status: 'Disponível' | 'Em Processo' | 'Adotado') => {
     await dbService.updatePetStatus(petId, status);
     setPets((prev) =>
       prev.map((p) => (p.id === petId ? { ...p, status } : p))
     );
-    triggerToast(`Status do pet atualizado para: ${status}`);
+    if (selectedPet && selectedPet.id === petId) {
+      setSelectedPet((prev) => (prev ? { ...prev, status } : null));
+    }
+    triggerToast(`Status do pet atualizado para "${status}".`);
   };
 
-  const handleAdoptionInterestSubmit = async (data: {
+  const handleAddSolicitation = async (data: {
     name: string;
     phone: string;
     email: string;
@@ -191,64 +204,21 @@ export default function App() {
       petName: petForInterestModal.name,
       petImage: petForInterestModal.mainImage,
       requesterName: data.name,
-      requesterEmail: data.email || currentUser?.email || 'user@gmail.com',
-      dateOrDetails: `${data.date} (${data.notes})`,
-      status: 'pending',
+      requesterEmail: currentUser?.email || data.email,
+      userId: currentUser?.id,
       phone: data.phone,
       email: data.email,
-      ongId: petForInterestModal.ongId || 'amigos-de-patas',
-      ongName: petForInterestModal.ongName || 'Amigos de Patas',
-      ongPhone: '(11) 98765-4321',
-      ongEmail: 'contato@amigosdepatas.org.br',
-      ongAddress: 'São Paulo - SP',
+      dateOrDetails: `${data.date}. ${data.notes}`,
+      status: 'pending',
+      ongId: petForInterestModal.ongId || 'ong-amigos-de-patas',
+      ongName: petForInterestModal.ongName || 'ONG Parceira',
       createdAt: new Date().toISOString()
     };
 
-    await dbService.saveSolicitation(newSolicitation);
-    setSolicitations((prev) => [newSolicitation, ...prev]);
-    triggerToast(`Visita agendada para conhecer ${petForInterestModal.name}! Acompanhe em Meus Interesses.`);
-  };
-
-  const handleIndicarOngSubmit = async (newOng: Partial<ONG>) => {
-    const id = `ong-${Date.now()}`;
-    const fullOng: ONG = {
-      id,
-      name: newOng.name || 'Nova ONG Parceira',
-      city: newOng.city || 'São Paulo',
-      state: newOng.state || 'SP',
-      phone: newOng.phone || '(11) 90000-0000',
-      email: 'contato@ongparceira.org.br',
-      address: `${newOng.city || 'São Paulo'}, SP`,
-      image:
-        newOng.image ||
-        'https://lh3.googleusercontent.com/aida-public/AB6AXuCeLWHs24XaUcWLidTvmpWuyCMw79Zvw3YtCMtvI7QR2MEDwN0zEEk7pBgnaXtzl3m-Ow18esAG9DeT1_Loqm8j6moJmSbj0oF_-aB6alzR1XWIn_UZOKA3kl7fCPNLN6TzmJidMgALYrc-JHjx4_ycMy5pTvzEwjjACU7aeSp6LncJsSlsfJsqdI10izFuoaQbL-UyOyNSmFMS-HR4Y_MSAEyxsF4F_VIM0YoiuWNBBFBhKrJCKWDkkg',
-      description: newOng.description || 'Instituição dedicada ao resgate e bem-estar animal.',
-      petsCount: 12
-    };
-
-    await dbService.saveOng(fullOng);
-    setOngs((prev) => [...prev, fullOng]);
-    triggerToast(`ONG ${fullOng.name} cadastrada e salva com sucesso!`);
-  };
-
-  const handleFosterSubmit = async (data: Omit<FosterRequest, 'id' | 'timestamp' | 'status'>) => {
-    const newFoster: FosterRequest = {
-      id: `foster-${Date.now()}`,
-      petName: data.petName,
-      species: data.species,
-      size: 'Médio',
-      reason: data.reason,
-      requesterName: data.requesterName || currentUser?.name || 'Cliente',
-      requesterEmail: currentUser?.email || 'user@gmail.com',
-      phone: data.phone,
-      timestamp: 'Hoje, ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-      status: 'pending',
-      photoUrl: data.photoUrl
-    };
-
-    await dbService.saveFosterRequest(newFoster);
-    setFosterRequests((prev) => [newFoster, ...prev]);
-    triggerToast('Solicitação de triagem gravada no banco de dados! Acompanhe na aba Triagens.');
+    const saved = await dbService.saveSolicitation(newSolicitation);
+    setSolicitations((prev) => [saved, ...prev]);
+    triggerToast(`Interesse em ${petForInterestModal.name} enviado para a ONG!`);
+    setPetForInterestModal(null);
   };
 
   const handleApproveSolicitation = async (id: string) => {
@@ -256,248 +226,345 @@ export default function App() {
     setSolicitations((prev) =>
       prev.map((s) => (s.id === id ? { ...s, status: 'approved', adoptionGranted: true } : s))
     );
-    triggerToast('Solicitação aprovada e atualizada no banco!');
+    triggerToast('Adoção concedida e aprovada com sucesso!');
   };
 
   const handleRejectSolicitation = async (id: string) => {
     await dbService.updateSolicitationStatus(id, 'rejected');
     setSolicitations((prev) =>
-      prev.map((s) => (s.id === id ? { ...s, status: 'rejected', adoptionGranted: false } : s))
+      prev.map((s) => (s.id === id ? { ...s, status: 'rejected' } : s))
     );
-    triggerToast('Solicitação recusada e atualizada no banco.');
+    triggerToast('Solicitação recusada.');
   };
 
-  const handleAcceptFoster = async (id: string) => {
-    await dbService.updateFosterStatus(id, 'accepted');
+  const handleAddFosterRequest = async (data: Partial<FosterRequest>) => {
+    const newReq: FosterRequest = {
+      id: `foster-${Date.now()}`,
+      petName: data.petName || 'Animal Resgatado',
+      species: data.species || 'Cachorro',
+      size: data.size || 'Médio',
+      reason: data.reason || 'Pedido de acolhimento',
+      timestamp: 'Agora',
+      status: 'pending',
+      photoUrl: data.photoUrl,
+      requesterName: currentUser?.name || data.requesterName || 'Adotante',
+      requesterEmail: currentUser?.email || data.requesterEmail,
+      phone: currentUser?.phone || data.phone
+    };
+
+    const saved = await dbService.saveFosterRequest(newReq);
+    setFosterRequests((prev) => [saved, ...prev]);
+    triggerToast('Triagem cadastrada com sucesso! As ONGs parceiras foram notificadas.');
+    if (currentUser) {
+      setActiveTab('minhas-adocoes');
+    } else {
+      setActiveTab('adotar');
+    }
+  };
+
+  const handleAcceptFoster = async (id: string, ongInfo?: OngSession) => {
+    const ong = ongInfo || currentOng;
+    if (!ong) {
+      triggerToast('É necessário estar logado como ONG para aceitar acolhimento.');
+      return;
+    }
+
+    await dbService.updateFosterStatus(id, 'accepted', {
+      id: ong.id,
+      name: ong.name,
+      phone: ong.phone || '(11) 98765-4321',
+      address: ong.address || `${ong.city} - ${ong.state}`
+    });
+
     setFosterRequests((prev) =>
       prev.map((f) =>
         f.id === id
           ? {
               ...f,
               status: 'accepted',
-              acceptedByOngName: 'Amigos de Patas',
-              acceptedByOngPhone: '(11) 98765-4321',
-              acceptedByOngAddress: 'Av. Paulista, 1200 - São Paulo, SP'
+              acceptedByOngId: ong.id,
+              acceptedByOngName: ong.name,
+              acceptedByOngPhone: ong.phone,
+              acceptedByOngAddress: ong.address
             }
           : f
       )
     );
-    triggerToast('Acolhimento aceito e salvo no banco!');
+    triggerToast(`Acolhimento aceito pela sua ONG (${ong.name})!`);
+  };
+
+  const handleIndicarOng = async (ongData: Partial<ONG>) => {
+    const newOng: ONG = {
+      id: `ong-${Date.now()}`,
+      cnpj: '00.000.000/0001-00',
+      name: ongData.name || 'Nova ONG Indicada',
+      city: ongData.city || 'São Paulo',
+      state: ongData.state || 'SP',
+      phone: ongData.phone || '(11) 90000-0000',
+      description: ongData.description || 'Indicação da comunidade MatchPet.',
+      image: 'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?auto=format&fit=crop&w=800&q=80',
+      petsCount: 0
+    };
+
+    const saved = await dbService.saveOng(newOng);
+    setOngs((prev) => [...prev, saved]);
+    triggerToast('Obrigado! A indicação da ONG foi enviada ao administrador.');
   };
 
   const favoritesCount = pets.filter((p) => p.favorite).length;
-  const isAdmin = currentUser?.role === 'admin';
-  const isClientTab =
-    activeTab === 'status-interesse' ||
-    activeTab === 'solicitacoes-adocao' ||
-    activeTab === 'triagem-incompleta';
 
   return (
     <div className="min-h-screen flex flex-col bg-[#f7f9fb] text-[#191c1e] antialiased">
-      {/* Top Navigation Bar */}
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="fixed bottom-6 right-6 z-50 bg-[#074469] text-white px-5 py-3 rounded-2xl shadow-xl border border-[#a0efd6]/30 flex items-center gap-3 animate-in slide-in-from-bottom-5 duration-300 font-['Be_Vietnam_Pro'] text-sm font-semibold">
+          <span className="material-symbols-outlined text-[#a0efd6]">notifications_active</span>
+          <span>{toastMessage}</span>
+        </div>
+      )}
+
+      {/* Navbar com Suporte a Dois Logins Independentes */}
       <Navbar
         activeTab={activeTab}
         setActiveTab={(tab) => {
           setSelectedPet(null);
           setActiveTab(tab);
-          window.scrollTo({ top: 0, behavior: 'smooth' });
         }}
-        onOpenAuth={(mode) => setAuthModalMode(mode)}
+        onOpenAuth={(prof) => setAuthModalProfile(prof || 'user')}
         favoritesCount={favoritesCount}
         currentUser={currentUser}
-        onLogout={handleLogout}
+        currentOng={currentOng}
+        onLogoutUser={handleLogoutUser}
+        onLogoutOng={handleLogoutOng}
       />
 
-      {/* Toast Notification */}
-      {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 bg-[#074469] text-white px-5 py-3 rounded-xl shadow-xl flex items-center gap-2 font-['Be_Vietnam_Pro'] text-sm animate-in slide-in-from-bottom duration-300">
-          <span className="material-symbols-outlined text-[#a0efd6] text-lg">info</span>
-          <span>{toastMessage}</span>
+      {/* Padding compensador para a fixed Navbar */}
+      <div className="h-20" />
+
+      {/* Loader Global */}
+      {loading ? (
+        <div className="flex-grow flex items-center justify-center min-h-[50vh]">
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-12 h-12 border-4 border-[#074469] border-t-transparent rounded-full animate-spin" />
+            <p className="font-['Be_Vietnam_Pro'] text-sm text-[#72787f] font-semibold">
+              Carregando MatchPet...
+            </p>
+          </div>
         </div>
+      ) : (
+        <>
+          {/* Visualização de Detalhes do Pet */}
+          {selectedPet ? (
+            <PetDetailView
+              pet={selectedPet}
+              onBack={() => setSelectedPet(null)}
+              onToggleFavorite={() => handleToggleFavorite(selectedPet.id)}
+              onManifestInterest={() => {
+                if (!currentUser) {
+                  setAuthModalProfile('user');
+                  triggerToast('Faça login como adotante para manifestar interesse.');
+                } else {
+                  setPetForInterestModal(selectedPet);
+                }
+              }}
+            />
+          ) : (
+            <>
+              {/* ABA: ADOTAR */}
+              {activeTab === 'adotar' && (
+                <AdoptionView
+                  pets={pets}
+                  onSelectPet={(pet) => setSelectedPet(pet)}
+                  onToggleFavorite={handleToggleFavorite}
+                  onManifestInterest={(pet) => {
+                    if (!currentUser) {
+                      setAuthModalProfile('user');
+                      triggerToast('Faça login como adotante para manifestar interesse.');
+                    } else {
+                      setPetForInterestModal(pet);
+                    }
+                  }}
+                  onGoToFoster={() => setActiveTab('acolhimento')}
+                />
+              )}
+
+              {/* ABA: ONGS PÚBLICA */}
+              {activeTab === 'ongs' && (
+                <OngsView
+                  ongs={ongs}
+                  pets={pets}
+                  onSelectPet={(pet) => setSelectedPet(pet)}
+                  onOpenIndicarOng={() => setShowIndicarOngModal(true)}
+                  onOpenContactOng={(ong) =>
+                    triggerToast(`Contato ${ong.name}: ${ong.phone} • ${ong.email || 'contato@matchpet.ong.br'}`)
+                  }
+                />
+              )}
+
+              {/* ABA UNIFICADA: MINHAS ADOÇÕES (EXCLUSIVO PARA ADOTANTES LOGADOS) */}
+              {activeTab === 'minhas-adocoes' && (
+                currentUser ? (
+                  <UserAdoptionsView
+                    currentUser={currentUser}
+                    solicitations={solicitations}
+                    fosterRequests={fosterRequests}
+                    pets={pets}
+                    onSelectPet={(pet) => setSelectedPet(pet)}
+                    onOpenNewFoster={() => setActiveTab('acolhimento')}
+                    onOpenAdoptionGallery={() => setActiveTab('adotar')}
+                  />
+                ) : (
+                  <div className="flex-grow flex items-center justify-center min-h-[60vh] px-4">
+                    <div className="bg-white rounded-3xl p-8 max-w-md w-full text-center border border-[#e0e3e5] shadow-xs">
+                      <div className="w-16 h-16 bg-[#074469]/10 text-[#074469] rounded-2xl flex items-center justify-center mx-auto mb-4">
+                        <span className="material-symbols-outlined text-3xl">lock</span>
+                      </div>
+                      <h2 className="font-['Plus_Jakarta_Sans'] text-2xl font-bold text-[#074469] mb-2">
+                        Acesso do Adotante
+                      </h2>
+                      <p className="font-['Be_Vietnam_Pro'] text-sm text-[#41474e] mb-6">
+                        Faça login na sua conta de adotante para acompanhar seus interesses, solicitações formais e triagens.
+                      </p>
+                      <button
+                        onClick={() => setAuthModalProfile('user')}
+                        className="w-full bg-[#074469] hover:bg-[#2a5c82] text-white font-bold py-3 rounded-xl transition-all shadow-sm cursor-pointer text-sm"
+                      >
+                        Entrar como Adotante
+                      </button>
+                    </div>
+                  </div>
+                )
+              )}
+
+              {/* ABA: PAINEL DO ADMINISTRADOR (EXCLUSIVO PARA ADMIN) */}
+              {activeTab === 'painel-admin' && (
+                currentOng?.role === 'admin' ? (
+                  <AdminDashboardView
+                    ongs={ongs}
+                    pets={pets}
+                    solicitations={solicitations}
+                    onOngCreated={(newOng) => {
+                      setOngs((prev) => [newOng, ...prev]);
+                    }}
+                  />
+                ) : (
+                  <div className="flex-grow flex items-center justify-center min-h-[60vh] px-4">
+                    <div className="bg-white rounded-3xl p-8 max-w-md w-full text-center border border-[#e0e3e5] shadow-xs">
+                      <div className="w-16 h-16 bg-[#ffdad6] text-[#ba1a1a] rounded-2xl flex items-center justify-center mx-auto mb-4">
+                        <span className="material-symbols-outlined text-3xl">admin_panel_settings</span>
+                      </div>
+                      <h2 className="font-['Plus_Jakarta_Sans'] text-2xl font-bold text-[#074469] mb-2">
+                        Acesso Restrito ao Administrador
+                      </h2>
+                      <p className="font-['Be_Vietnam_Pro'] text-sm text-[#41474e] mb-6">
+                        Este painel é reservado exclusivamente para a administração do MatchPet.
+                      </p>
+                      <button
+                        onClick={() => setAuthModalProfile('ong')}
+                        className="w-full bg-[#074469] hover:bg-[#2a5c82] text-white font-bold py-3 rounded-xl transition-all shadow-sm cursor-pointer text-sm"
+                      >
+                        Entrar com Credenciais de Admin
+                      </button>
+                    </div>
+                  </div>
+                )
+              )}
+
+              {/* ABA: PAINEL DA ONG (ISOLAMENTO ESTRITO POR ONG) */}
+              {activeTab === 'painel-ong' && (
+                currentOng?.role === 'ong' ? (
+                  <OngDashboardView
+                    currentOng={currentOng}
+                    pets={pets}
+                    solicitations={solicitations}
+                    fosterRequests={fosterRequests}
+                    onAddPet={handleAddPet}
+                    onDeletePet={handleDeletePet}
+                    onUpdatePetStatus={handleUpdatePetStatus}
+                    onApproveSolicitation={handleApproveSolicitation}
+                    onRejectSolicitation={handleRejectSolicitation}
+                    onAcceptFoster={handleAcceptFoster}
+                    onOpenFosterDetails={(foster) => setActiveFosterDetails(foster)}
+                    onOpenSolicitationProfile={(sol) => setActiveSolicitationProfile(sol)}
+                  />
+                ) : (
+                  <div className="flex-grow flex items-center justify-center min-h-[60vh] px-4">
+                    <div className="bg-white rounded-3xl p-8 max-w-md w-full text-center border border-[#e0e3e5] shadow-xs">
+                      <div className="w-16 h-16 bg-[#a0efd6] text-[#126b57] rounded-2xl flex items-center justify-center mx-auto mb-4">
+                        <span className="material-symbols-outlined text-3xl">domain</span>
+                      </div>
+                      <h2 className="font-['Plus_Jakarta_Sans'] text-2xl font-bold text-[#074469] mb-2">
+                        Painel Exclusivo da ONG
+                      </h2>
+                      <p className="font-['Be_Vietnam_Pro'] text-sm text-[#41474e] mb-6">
+                        Faça login com o e-mail e senha exclusivos emitidos pelo administrador para a sua ONG.
+                      </p>
+                      <button
+                        onClick={() => setAuthModalProfile('ong')}
+                        className="w-full bg-[#126b57] hover:bg-[#005141] text-white font-bold py-3 rounded-xl transition-all shadow-sm cursor-pointer text-sm"
+                      >
+                        Entrar com Login da ONG
+                      </button>
+                    </div>
+                  </div>
+                )
+              )}
+
+              {/* ABA: COMO APOIAR / FORMULÁRIO DE ACOLHIMENTO */}
+              {activeTab === 'acolhimento' && (
+                <FosterFormView
+                  onSubmit={handleAddFosterRequest}
+                  onOpenPixModal={() => setShowPixModal(true)}
+                  onGoToAdoption={() => setActiveTab('adotar')}
+                />
+              )}
+
+              {/* ABA: SOBRE NÓS */}
+              {activeTab === 'sobre-nos' && (
+                <AboutView
+                  onGoToAdoption={() => setActiveTab('adotar')}
+                  onGoToFoster={() => setActiveTab('acolhimento')}
+                  onOpenPix={() => setShowPixModal(true)}
+                />
+              )}
+            </>
+          )}
+        </>
       )}
 
-      {/* Main Views Router */}
-      <div className="pt-20 flex-grow flex flex-col">
-        {selectedPet ? (
-          <PetDetailView
-            pet={selectedPet}
-            onBack={handleBackToAdoption}
-            onToggleFavorite={handleToggleFavorite}
-            onManifestarInteresse={(pet) => setPetForInterestModal(pet)}
-          />
-        ) : (
-          <>
-            {activeTab === 'adotar' && (
-              <AdoptionView
-                pets={pets}
-                onSelectPet={handleSelectPet}
-                onToggleFavorite={handleToggleFavorite}
-                onQueroAjudar={() => setActiveTab('acolhimento')}
-              />
-            )}
-
-            {activeTab === 'ongs' && (
-              <OngsView
-                ongs={ongs}
-                pets={pets}
-                onSelectPet={handleSelectPet}
-                onOpenIndicarOng={() => setShowIndicarOngModal(true)}
-                onOpenContactOng={(ong) => {
-                  triggerToast(`Contato da ${ong.name}: ${ong.phone}`);
-                }}
-              />
-            )}
-
-            {activeTab === 'acolhimento' && (
-              <FosterFormView
-                onSubmitFoster={handleFosterSubmit}
-                onGoBack={() => setActiveTab('adotar')}
-              />
-            )}
-
-            {/* NOVAS 3 ABAS PARA CLIENTES LOGADOS */}
-            {isClientTab && (
-              currentUser ? (
-                <UserPortalViews
-                  activeTab={activeTab}
-                  setActiveTab={(tab) => {
-                    setActiveTab(tab);
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                  }}
-                  currentUser={currentUser}
-                  solicitations={solicitations}
-                  fosterRequests={fosterRequests}
-                  pets={pets}
-                  onSelectPet={handleSelectPet}
-                  onOpenNewFoster={() => setActiveTab('acolhimento')}
-                  onOpenAdoptionGallery={() => setActiveTab('adotar')}
-                />
-              ) : (
-                <div className="max-w-4xl mx-auto px-4 py-16 text-center my-auto">
-                  <div className="bg-white rounded-3xl p-8 md:p-12 shadow-sm border border-[#e0e3e5] max-w-lg mx-auto">
-                    <div className="w-20 h-20 bg-[#a0efd6] text-[#074469] rounded-2xl flex items-center justify-center mx-auto mb-5">
-                      <span className="material-symbols-outlined text-4xl">lock_person</span>
-                    </div>
-                    <span className="bg-[#074469] text-[#a0efd6] text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">
-                      Área do Adotante
-                    </span>
-                    <h2 className="font-['Plus_Jakarta_Sans'] text-2xl md:text-3xl font-bold text-[#074469] mt-4 mb-2">
-                      Acesso aos Seus Processos
-                    </h2>
-                    <p className="font-['Be_Vietnam_Pro'] text-sm text-[#41474e] mb-6 leading-relaxed">
-                      Faça login ou cadastre-se gratuitamente para acompanhar o status de interesse, solicitações de adoção e triagens em tempo real.
-                    </p>
-
-                    <div className="flex flex-col sm:flex-row gap-3 justify-center font-['Be_Vietnam_Pro'] text-sm">
-                      <button
-                        onClick={() => setActiveTab('adotar')}
-                        className="bg-[#f2f4f6] hover:bg-[#e0e3e5] text-[#191c1e] font-semibold px-5 py-2.5 rounded-xl transition-colors cursor-pointer"
-                      >
-                        Ver Animais
-                      </button>
-                      <button
-                        onClick={() => setAuthModalMode('login')}
-                        className="bg-[#074469] hover:bg-[#2a5c82] text-white font-bold px-5 py-2.5 rounded-xl transition-colors shadow-sm cursor-pointer flex items-center justify-center gap-2"
-                      >
-                        <span className="material-symbols-outlined text-base">login</span>
-                        Entrar na Conta
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )
-            )}
-
-            {/* CONTROLE DE ACESSO DO PAINEL ONG / ADMINISTRATIVO */}
-            {activeTab === 'painel-ong' && (
-              isAdmin ? (
-                <OngDashboardView
-                  pets={pets}
-                  solicitations={solicitations}
-                  fosterRequests={fosterRequests}
-                  onAddPet={handleAddPet}
-                  onDeletePet={handleDeletePet}
-                  onUpdatePetStatus={handleUpdatePetStatus}
-                  onApproveSolicitation={handleApproveSolicitation}
-                  onRejectSolicitation={handleRejectSolicitation}
-                  onAcceptFoster={handleAcceptFoster}
-                  onOpenFosterDetails={(foster) => setActiveFosterDetails(foster)}
-                  onOpenSolicitationProfile={(sol) => setActiveSolicitationProfile(sol)}
-                />
-              ) : (
-                <div className="max-w-4xl mx-auto px-4 py-16 text-center my-auto">
-                  <div className="bg-white rounded-3xl p-8 md:p-12 shadow-sm border border-[#e0e3e5] max-w-lg mx-auto">
-                    <div className="w-20 h-20 bg-[#ffdad6] text-[#ba1a1a] rounded-2xl flex items-center justify-center mx-auto mb-5">
-                      <span className="material-symbols-outlined text-4xl">lock</span>
-                    </div>
-                    <span className="bg-[#ffdad6] text-[#93000a] text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">
-                      Acesso Restrito
-                    </span>
-                    <h2 className="font-['Plus_Jakarta_Sans'] text-2xl md:text-3xl font-bold text-[#074469] mt-4 mb-2">
-                      Painel Administrativo da ONG
-                    </h2>
-                    <p className="font-['Be_Vietnam_Pro'] text-sm text-[#41474e] mb-6 leading-relaxed">
-                      Esta área é de acesso exclusivo para o perfil de administrador (<strong>admin@gmail.com</strong>). Contas de usuários comuns e visitantes não têm permissão para acessar esta seção.
-                    </p>
-
-                    <div className="flex flex-col sm:flex-row gap-3 justify-center font-['Be_Vietnam_Pro'] text-sm">
-                      <button
-                        onClick={() => setActiveTab('adotar')}
-                        className="bg-[#f2f4f6] hover:bg-[#e0e3e5] text-[#191c1e] font-semibold px-5 py-2.5 rounded-xl transition-colors cursor-pointer"
-                      >
-                        Voltar para Adoção
-                      </button>
-                      <button
-                        onClick={() => setAuthModalMode('login')}
-                        className="bg-[#074469] hover:bg-[#2a5c82] text-white font-bold px-5 py-2.5 rounded-xl transition-colors shadow-sm cursor-pointer flex items-center justify-center gap-2"
-                      >
-                        <span className="material-symbols-outlined text-base">login</span>
-                        Entrar como Administrador
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )
-            )}
-
-            {activeTab === 'sobre-nos' && (
-              <AboutView
-                onGoToAdoption={() => setActiveTab('adotar')}
-                onGoToFoster={() => setActiveTab('acolhimento')}
-                onOpenPix={() => setShowPixModal(true)}
-              />
-            )}
-          </>
-        )}
-      </div>
-
-      {/* Footer */}
+      {/* Footer MatchPet */}
       <Footer
         onOpenApoioModal={() => setShowPixModal(true)}
-        onOpenContactModal={() => triggerToast('Central de Atendimento CorrenteCão: suporte@correntecao.ong.br')}
+        onOpenContactModal={() => triggerToast('Central de Atendimento MatchPet: suporte@matchpet.ong.br')}
       />
 
-      {/* Modals Container */}
+      {/* Modais do Sistema */}
       {petForInterestModal && (
         <AdoptionInterestModal
           pet={petForInterestModal}
+          currentUser={currentUser}
           onClose={() => setPetForInterestModal(null)}
-          onSubmit={handleAdoptionInterestSubmit}
+          onRequireLogin={() => {
+            setPetForInterestModal(null);
+            setAuthModalProfile('user');
+          }}
+          onSubmit={handleAddSolicitation}
         />
       )}
 
       {showIndicarOngModal && (
         <IndicarOngModal
           onClose={() => setShowIndicarOngModal(false)}
-          onSubmit={handleIndicarOngSubmit}
+          onSubmit={handleIndicarOng}
         />
       )}
 
-      {authModalMode && (
+      {authModalProfile && (
         <AuthModal
-          mode={authModalMode}
-          onClose={() => setAuthModalMode(null)}
-          onSuccess={handleAuthSuccess}
+          defaultProfile={authModalProfile}
+          onClose={() => setAuthModalProfile(null)}
+          onUserSuccess={handleUserAuthSuccess}
+          onOngSuccess={handleOngAuthSuccess}
         />
       )}
 
@@ -509,7 +576,10 @@ export default function App() {
         <FosterDetailsModal
           request={activeFosterDetails}
           onClose={() => setActiveFosterDetails(null)}
-          onAccept={() => handleAcceptFoster(activeFosterDetails.id)}
+          onAccept={() => {
+            handleAcceptFoster(activeFosterDetails.id);
+            setActiveFosterDetails(null);
+          }}
         />
       )}
 
@@ -517,7 +587,10 @@ export default function App() {
         <ProfileAnalysisModal
           solicitation={activeSolicitationProfile}
           onClose={() => setActiveSolicitationProfile(null)}
-          onApprove={() => handleApproveSolicitation(activeSolicitationProfile.id)}
+          onApprove={() => {
+            handleApproveSolicitation(activeSolicitationProfile.id);
+            setActiveSolicitationProfile(null);
+          }}
         />
       )}
     </div>

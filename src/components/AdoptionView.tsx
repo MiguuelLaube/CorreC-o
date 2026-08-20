@@ -327,7 +327,7 @@ export const AdoptionView: React.FC<AdoptionViewProps> = ({
         <div className="max-w-7xl mx-auto px-4 md:px-16 mb-10 text-center relative z-10">
           <div className="inline-flex items-center gap-2 bg-[#cde5ff] text-[#074469] font-['Be_Vietnam_Pro'] text-xs font-bold px-3 py-1 rounded-full mb-3 shadow-xs">
             <span className="material-symbols-outlined text-sm">handshake</span>
-            <span>Rede de Apoio CorrenteCão</span>
+            <span>Rede de Apoio MatchPet</span>
           </div>
           <h2 className="font-['Plus_Jakarta_Sans'] text-3xl md:text-4xl font-bold text-[#074469]">
             Nossos Parceiros & Benefícios
@@ -534,7 +534,7 @@ export const AdoptionView: React.FC<AdoptionViewProps> = ({
               <div className="bg-[#f2f4f6] rounded-xl p-4 text-xs text-[#41474e] space-y-1.5">
                 <p className="flex items-center gap-2">
                   <span className="material-symbols-outlined text-sm text-[#126b57]">verified</span>
-                  <span>Empresa parceira oficial cadastrada na rede <strong>CorrenteCão</strong></span>
+                  <span>Empresa parceira oficial cadastrada na rede <strong>MatchPet</strong></span>
                 </p>
                 <p className="flex items-center gap-2">
                   <span className="material-symbols-outlined text-sm text-[#074469]">link</span>

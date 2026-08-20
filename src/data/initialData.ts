@@ -1,5 +1,67 @@
 import { Pet, ONG, Solicitation, FosterRequest, Partner } from '../types';
 
+export const INITIAL_ONGS: ONG[] = [
+  {
+    id: 'ong-amigos-de-patas',
+    cnpj: '12.345.678/0001-90',
+    name: 'Amigos de Patas',
+    city: 'São Paulo',
+    state: 'SP',
+    phone: '(11) 98765-4321',
+    email: 'contato@amigosdepatas.org.br',
+    passwordHash: '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918', // admin123
+    address: 'Av. Paulista, 1200 - Bela Vista, São Paulo - SP',
+    image: 'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?auto=format&fit=crop&w=800&q=80',
+    description: 'Instalações acolhedoras dedicadas ao resgate, reabilitação e adoção responsável de cães e gatos.',
+    petsCount: 48,
+    featured: true
+  },
+  {
+    id: 'ong-refugio-animal',
+    cnpj: '98.765.432/0001-10',
+    name: 'Refúgio Animal',
+    city: 'Campinas',
+    state: 'SP',
+    phone: '(19) 99887-6655',
+    email: 'adocao@refugioanimal.org.br',
+    passwordHash: '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918', // admin123
+    address: 'Rua das Flores, 450 - Taquaral, Campinas - SP',
+    image: 'https://images.unsplash.com/photo-1535268647677-300dbf3d78d1?auto=format&fit=crop&w=800&q=80',
+    description: 'Comunidade engajada com equipe veterinária focada em acolhimento e filhotes resgatados.',
+    petsCount: 35,
+    featured: true
+  },
+  {
+    id: 'ong-sos-focinhos',
+    cnpj: '45.678.901/0001-23',
+    name: 'SOS Focinhos',
+    city: 'Rio de Janeiro',
+    state: 'RJ',
+    phone: '(21) 97766-5544',
+    email: 'focinhos@sosfocinhos.org.br',
+    passwordHash: '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918', // admin123
+    address: 'Rua Barata Ribeiro, 300 - Copacabana, Rio de Janeiro - RJ',
+    image: 'https://images.unsplash.com/photo-1596492784531-6e6eb5ea9993?auto=format&fit=crop&w=800&q=80',
+    description: 'Resgate urbano e programas de socialização e feiras de adoção semanais.',
+    petsCount: 59,
+    featured: true
+  },
+  {
+    id: 'ong-instituto-patinhas',
+    cnpj: '78.901.234/0001-56',
+    name: 'Instituto Patinhas de Ouro',
+    city: 'São Paulo',
+    state: 'SP',
+    phone: '(11) 97123-9988',
+    email: 'adotar@patinhasdeouro.org.br',
+    passwordHash: '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918', // admin123
+    address: 'Rua Vergueiro, 2500 - Vila Mariana, São Paulo - SP',
+    image: 'https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?auto=format&fit=crop&w=800&q=80',
+    description: 'Especializada no resgate e recuperação de cães de todos os portes com recreação.',
+    petsCount: 22
+  }
+];
+
 export const INITIAL_PETS: Pet[] = [
   {
     id: 'thor',
@@ -16,11 +78,11 @@ export const INITIAL_PETS: Pet[] = [
     vaccination: 'Vacinado',
     castrated: true,
     dewormed: true,
-    mainImage: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBhmoZIYpAE2ONKirfuZcJWXqW3qZR3OY3bnMbiokAo1HYJX9bKCG_qk1I9SQDZhnWo0LNDGRdC2mkO0TVKZMqCBozPVz80yuk1ggFOsSPsDdzP1MlIElifQ4JD8fXaot92LJWBKulWKZ9YXj-8rIMEId3I5sEEXxl-DXerG0kVX3YwX9YVsF45CG4_-VTgTLEfTwQzmtZ1Ygt6lkDxelsUSXrUXW6oNpu9dLeeaJwJlMJPOlnHu8leKQ',
+    mainImage: 'https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=800&q=80',
     galleryImages: [
-      'https://lh3.googleusercontent.com/aida-public/AB6AXuBp4qQKDMA8P6IuDZj-Qq_3PNBjrGmBe8L_p5CmSucjD_7T46g_byZ2WIju0XF_gbdqweMV3N-XhPcOWFZzwA0SYGdqCvABlS7c0TPL2ewszHw1UAR3zoyA0Oq7M2zEphD3By3Mczwqr6aHODa9LP29PGOhzTpo68MQhBh_kzDVr077kf7wNWM2wre4ZrAMf80vn1IkfJCVkgf_txNu2IsllGebB6du8seCKFtPOerXZAzlHZVrQKQZpw'
+      'https://images.unsplash.com/photo-1587300003388-59208cc962cb?auto=format&fit=crop&w=800&q=80'
     ],
-    ongId: 'instituto-patinhas-de-ouro',
+    ongId: 'ong-instituto-patinhas',
     ongName: 'Instituto Patinhas de Ouro',
     entryDate: '15/08/2023',
     status: 'Disponível',
@@ -41,8 +103,8 @@ export const INITIAL_PETS: Pet[] = [
     vaccination: 'Vacinado',
     castrated: true,
     dewormed: true,
-    mainImage: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCShgVnQPT5ashrWFhASQOevGW7KKSAiHFyft39pLyB25hJ68R1TWlBsd6xGL_gOqKZI7tG2ZGQHEdr-Ow5MtipJAlcG0C6Q5xRPX8Er7cBWkD9wRegIGeNMyCT1At7xz4gOz-_lQu-pW6O7l908FqRzYjETqHPla1HZFpq8zdwBd8jAtfZcpk-LjUDcYEICcNib8hAb06Ct98IQhFwA7TdgxMOdA8aRjHcm-CO4z4y6S5PKcFwvCuxpQ',
-    ongId: 'amigos-de-patas',
+    mainImage: 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&w=800&q=80',
+    ongId: 'ong-amigos-de-patas',
     ongName: 'Amigos de Patas',
     entryDate: '20/09/2023',
     status: 'Disponível',
@@ -63,8 +125,8 @@ export const INITIAL_PETS: Pet[] = [
     vaccination: 'Vacinado',
     castrated: true,
     dewormed: true,
-    mainImage: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDScg8E1wLKoOxssMEgdBxsRf7VmSnckynqN8o93xST5dsliCxCeSpCtKsSHKA61no0VwRgPA-bQsSN8Go5oie71zrSFGhK5XcqoPPLpX_3l3qcW_E1-16oyaAoPrTgNeah6UgEG139u3PORPfqNLAUdiTUAbPwNth-CUHNun2XW6RfDHfPcCHVFwXy0Y3Viu4Y-B7Tfv8skkdwqzseIkyg9JkzeplglMQUooQUNtgCkZYP_AMU0swASQ',
-    ongId: 'refugio-animal',
+    mainImage: 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&w=800&q=80',
+    ongId: 'ong-refugio-animal',
     ongName: 'Refúgio Animal',
     entryDate: '05/09/2023',
     status: 'Em Processo',
@@ -75,8 +137,8 @@ export const INITIAL_PETS: Pet[] = [
     name: 'Bolinha',
     species: 'Cachorro',
     breed: 'Border Collie Mix',
-    city: 'Curitiba',
-    state: 'PR',
+    city: 'Rio de Janeiro',
+    state: 'RJ',
     age: '3 meses',
     ageGroup: 'Filhote',
     gender: 'Macho',
@@ -85,8 +147,8 @@ export const INITIAL_PETS: Pet[] = [
     vaccination: 'Vacinado',
     castrated: false,
     dewormed: true,
-    mainImage: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBEVFfc_G2QZdy7dmmkdS3qUcSTh5vRtT4ekX2CwlC6fjvunQfQbEO3y9SfwvZZABEKg2_z0MlFgZgs-L7oAAjr47kfEgLH4n-Lpk_mEhyw75Bdt0_UhZDYGl6F-nNt8SIIMvbzqGiVLFC1SpRX__vfzlt0ieqJW17g9MUsKU4f_q4ZFV54CJdnTmaxfwMDY5tFBpKDZBtsbv-rLzbkIbBizTyWBvSkXB748jXM050wIAQJm-wMptxC0A',
-    ongId: 'sos-focinhos',
+    mainImage: 'https://images.unsplash.com/photo-1546527868-ccb7ee7dfa6a?auto=format&fit=crop&w=800&q=80',
+    ongId: 'ong-sos-focinhos',
     ongName: 'SOS Focinhos',
     entryDate: '12/10/2023',
     status: 'Disponível',
@@ -108,66 +170,12 @@ export const INITIAL_PETS: Pet[] = [
     castrated: true,
     dewormed: true,
     specialNeeds: true,
-    mainImage: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDe_eWX6e87-TqMJYetwbfoT1DaQAd3kxv7pDXX-CaaeN7ivMI9VZOIh2dbNAmthqieTGeAYhpNvWkdER5V1v6C3KZ7jpSeCL5fIK2H2hBVbRCHCKtoq0zSkDyUwJ3ThI5smgQyzzoNNrkjCawM3in5MTz7dRelhnIur0Vqh8vsXW8kGdM6FvznFBzNHTgrwEwIBVXS_dRg6dmW7yshKhy7lSwW96S4FTB57XOcRmo28IasXVFUt4ApGQ',
-    ongId: 'sos-focinhos',
+    mainImage: 'https://images.unsplash.com/photo-1518717758536-85ae29035b6d?auto=format&fit=crop&w=800&q=80',
+    ongId: 'ong-sos-focinhos',
     ongName: 'SOS Focinhos',
     entryDate: '01/07/2023',
     status: 'Disponível',
     favorite: false
-  }
-];
-
-export const INITIAL_ONGS: ONG[] = [
-  {
-    id: 'amigos-de-patas',
-    name: 'Amigos de Patas',
-    city: 'São Paulo',
-    state: 'SP',
-    phone: '(11) 98765-4321',
-    email: 'contato@amigosdepatas.org.br',
-    address: 'Av. Paulista, 1200 - Bela Vista, São Paulo - SP',
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCeLWHs24XaUcWLidTvmpWuyCMw79Zvw3YtCMtvI7QR2MEDwN0zEEk7pBgnaXtzl3m-Ow18esAG9DeT1_Loqm8j6moJmSbj0oF_-aB6alzR1XWIn_UZOKA3kl7fCPNLN6TzmJidMgALYrc-JHjx4_ycMy5pTvzEwjjACU7aeSp6LncJsSlsfJsqdI10izFuoaQbL-UyOyNSmFMS-HR4Y_MSAEyxsF4F_VIM0YoiuWNBBFBhKrJCKWDkkg',
-    description: 'Instalações acolhedoras dedicadas ao resgate e adoção responsável de cães e gatos.',
-    petsCount: 48,
-    featured: true
-  },
-  {
-    id: 'refugio-animal',
-    name: 'Refúgio Animal',
-    city: 'Campinas',
-    state: 'SP',
-    phone: '(19) 99887-6655',
-    email: 'adocao@refugioanimal.org.br',
-    address: 'Rua das Flores, 450 - Taquaral, Campinas - SP',
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAal_LQVRsLJrWGjq_JrhZvFhx7n-dYP-JvZClyOqq_ZEuAp1S84ut4ZBNOfu-rgyXrsirPgK0uLSMvxOpFIf0RMdx7d6nb7ne0HnQ33EoiL6hHggD-UVK1M-7xtHv6yhZpm8FsIjZ6UH3q-f_KDCQPRHMUQaGAlFVeby5aHsK4eSmi6dDakTWfPkn8Q4FsmeT_Ide8CU2rb0UU_qqjmaNJhLHIcjoqyXK3ukVqzJgV7dUIJmwrI_BnpQ',
-    description: 'Comunidade engajada com equipe veterinária focada em acolhimento e filhotes resgatados.',
-    petsCount: 35,
-    featured: true
-  },
-  {
-    id: 'sos-focinhos',
-    name: 'SOS Focinhos',
-    city: 'Rio de Janeiro',
-    state: 'RJ',
-    phone: '(21) 97766-5544',
-    email: 'focinhos@sosfocinhos.org.br',
-    address: 'Rua Barata Ribeiro, 300 - Copacabana, Rio de Janeiro - RJ',
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAQYINo3Couhtwk7HhwVXJ_pbJsX_-WrHe2Elm23NUr7j_WuvczwXzxoD92dSgn1fjcChWWFj6H_KshQVtC9HRIBOjnbBh4ILrPzx8Tnm05pvXZK9tnoqBXS30eBAYQPTmqMBpa2VJKJJK1dB4ZAXkyoxz0x3QhmeJrJP-BXyDPbp1dok7EGlIID1xSOIhcsmBVkODI3CLBeudf66HlGAsAVyuCrSWkOS-vayA7ZovQudoTzZ8oiouhzw',
-    description: 'Resgate urbano e programas de socialização e feiras de adoção semanais.',
-    petsCount: 59,
-    featured: true
-  },
-  {
-    id: 'instituto-patinhas-de-ouro',
-    name: 'Instituto Patinhas de Ouro',
-    city: 'São Paulo',
-    state: 'SP',
-    phone: '(11) 97123-9988',
-    email: 'adotar@patinhasdeouro.org.br',
-    address: 'Rua Vergueiro, 2500 - Vila Mariana, São Paulo - SP',
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCeLWHs24XaUcWLidTvmpWuyCMw79Zvw3YtCMtvI7QR2MEDwN0zEEk7pBgnaXtzl3m-Ow18esAG9DeT1_Loqm8j6moJmSbj0oF_-aB6alzR1XWIn_UZOKA3kl7fCPNLN6TzmJidMgALYrc-JHjx4_ycMy5pTvzEwjjACU7aeSp6LncJsSlsfJsqdI10izFuoaQbL-UyOyNSmFMS-HR4Y_MSAEyxsF4F_VIM0YoiuWNBBFBhKrJCKWDkkg',
-    description: 'Especializada no resgate e recuperação de cães de todos os portes com recreação.',
-    petsCount: 22
   }
 ];
 
@@ -177,14 +185,14 @@ export const INITIAL_SOLICITATIONS: Solicitation[] = [
     type: 'Visita',
     petId: 'bolinha',
     petName: 'Bolinha',
-    petImage: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBEVFfc_G2QZdy7dmmkdS3qUcSTh5vRtT4ekX2CwlC6fjvunQfQbEO3y9SfwvZZABEKg2_z0MlFgZgs-L7oAAjr47kfEgLH4n-Lpk_mEhyw75Bdt0_UhZDYGl6F-nNt8SIIMvbzqGiVLFC1SpRX__vfzlt0ieqJW17g9MUsKU4f_q4ZFV54CJdnTmaxfwMDY5tFBpKDZBtsbv-rLzbkIbBizTyWBvSkXB748jXM050wIAQJm-wMptxC0A',
+    petImage: 'https://images.unsplash.com/photo-1546527868-ccb7ee7dfa6a?auto=format&fit=crop&w=800&q=80',
     requesterName: 'Adotante',
     requesterEmail: 'user@gmail.com',
     dateOrDetails: 'Sábado, 14h às 16h',
     status: 'in_review',
     phone: '(11) 98112-3344',
     email: 'user@gmail.com',
-    ongId: 'sos-focinhos',
+    ongId: 'ong-sos-focinhos',
     ongName: 'SOS Focinhos',
     ongPhone: '(21) 97766-5544',
     ongEmail: 'focinhos@sosfocinhos.org.br',
@@ -196,7 +204,7 @@ export const INITIAL_SOLICITATIONS: Solicitation[] = [
     type: 'Adoção',
     petId: 'thor',
     petName: 'Thor',
-    petImage: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBhmoZIYpAE2ONKirfuZcJWXqW3qZR3OY3bnMbiokAo1HYJX9bKCG_qk1I9SQDZhnWo0LNDGRdC2mkO0TVKZMqCBozPVz80yuk1ggFOsSPsDdzP1MlIElifQ4JD8fXaot92LJWBKulWKZ9YXj-8rIMEId3I5sEEXxl-DXerG0kVX3YwX9YVsF45CG4_-VTgTLEfTwQzmtZ1Ygt6lkDxelsUSXrUXW6oNpu9dLeeaJwJlMJPOlnHu8leKQ',
+    petImage: 'https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=800&q=80',
     requesterName: 'Adotante',
     requesterEmail: 'user@gmail.com',
     dateOrDetails: 'Formulário completo preenchido (Casa com quintal telado)',
@@ -204,31 +212,12 @@ export const INITIAL_SOLICITATIONS: Solicitation[] = [
     adoptionGranted: true,
     phone: '(11) 98112-3344',
     email: 'user@gmail.com',
-    ongId: 'instituto-patinhas-de-ouro',
+    ongId: 'ong-instituto-patinhas',
     ongName: 'Instituto Patinhas de Ouro',
     ongPhone: '(11) 97123-9988',
     ongEmail: 'adotar@patinhasdeouro.org.br',
     ongAddress: 'Rua Vergueiro, 2500 - Vila Mariana, São Paulo - SP',
     createdAt: '2026-08-15T14:30:00Z'
-  },
-  {
-    id: 'sol-3',
-    type: 'Visita',
-    petId: 'caramelo',
-    petName: 'Caramelo',
-    petImage: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCShgVnQPT5ashrWFhASQOevGW7KKSAiHFyft39pLyB25hJ68R1TWlBsd6xGL_gOqKZI7tG2ZGQHEdr-Ow5MtipJAlcG0C6Q5xRPX8Er7cBWkD9wRegIGeNMyCT1At7xz4gOz-_lQu-pW6O7l908FqRzYjETqHPla1HZFpq8zdwBd8jAtfZcpk-LjUDcYEICcNib8hAb06Ct98IQhFwA7TdgxMOdA8aRjHcm-CO4z4y6S5PKcFwvCuxpQ',
-    requesterName: 'Adotante',
-    requesterEmail: 'user@gmail.com',
-    dateOrDetails: 'Domingo, 11h às 13h',
-    status: 'approved',
-    phone: '(11) 98112-3344',
-    email: 'user@gmail.com',
-    ongId: 'amigos-de-patas',
-    ongName: 'Amigos de Patas',
-    ongPhone: '(11) 98765-4321',
-    ongEmail: 'contato@amigosdepatas.org.br',
-    ongAddress: 'Av. Paulista, 1200 - Bela Vista, São Paulo - SP',
-    createdAt: '2026-08-19T09:15:00Z'
   }
 ];
 
@@ -238,14 +227,14 @@ export const INITIAL_FOSTER_REQUESTS: FosterRequest[] = [
     petName: 'Max',
     species: 'Cachorro',
     size: 'Grande',
-    reason: 'Triagem iniciada: Impossibilidade de adoção definitiva por diagnóstico de alergia crônica severa na família.',
+    reason: 'Triagem iniciada: Impossibilidade de acolhimento definitivo por diagnóstico de alergia crônica.',
     timestamp: 'Ontem, 16:45',
     status: 'accepted',
     photoUrl: 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&w=600&q=80',
     requesterName: 'Adotante',
     requesterEmail: 'user@gmail.com',
     phone: '(11) 97722-1199',
-    acceptedByOngId: 'amigos-de-patas',
+    acceptedByOngId: 'ong-amigos-de-patas',
     acceptedByOngName: 'Amigos de Patas',
     acceptedByOngPhone: '(11) 98765-4321',
     acceptedByOngEmail: 'acolhimento@amigosdepatas.org.br',
@@ -263,7 +252,7 @@ export const PARTNERS_LIST: Partner[] = [
     image: 'https://images.unsplash.com/photo-1628009368231-7bb7cfcb0def?auto=format&fit=crop&w=800&q=80',
     url: 'https://vidapet24h.com.br',
     badge: 'Parceiro Master',
-    discountOrBenefit: '15% de desconto para adotantes CorrenteCão'
+    discountOrBenefit: '15% de desconto para adotantes MatchPet'
   },
   {
     id: 'partner-2',
@@ -284,55 +273,5 @@ export const PARTNERS_LIST: Partner[] = [
     url: 'https://nutripetnatural.com.br',
     badge: '100% Natural',
     discountOrBenefit: 'Cupom R$ 50 no kit boas-vindas'
-  },
-  {
-    id: 'partner-4',
-    name: 'VetCare Centro Diagnóstico',
-    category: 'Exames & Diagnósticos',
-    tagline: 'Ultrassom, raio-x digital e exames laboratoriais rápidos',
-    image: 'https://images.unsplash.com/photo-1576201836106-db1758fd1c97?auto=format&fit=crop&w=800&q=80',
-    url: 'https://vetcarediagnosticos.com.br',
-    badge: 'Clínica Parceira',
-    discountOrBenefit: 'Checkup preventivo com valor social'
-  },
-  {
-    id: 'partner-5',
-    name: 'DogResort & Creche Recreativa',
-    category: 'Hotelzinho & Daycare',
-    tagline: 'Área verde de 2.000m² com monitores e piscina pet',
-    image: 'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?auto=format&fit=crop&w=800&q=80',
-    url: 'https://dogresortpark.com.br',
-    badge: 'Lazer & Hospedagem',
-    discountOrBenefit: '2 dias de daycare experimental grátis'
-  },
-  {
-    id: 'partner-6',
-    name: 'PetMóvel Resgate & Táxi Pet',
-    category: 'Transporte Seguro',
-    tagline: 'Veículos climatizados com caixas de transporte certificadas',
-    image: 'https://images.unsplash.com/photo-1537151608828-ea2b11777ee8?auto=format&fit=crop&w=800&q=80',
-    url: 'https://petmoveltransporte.com.br',
-    badge: 'Mobilidade Pet',
-    discountOrBenefit: 'Transporte gratuito no dia da adoção'
-  },
-  {
-    id: 'partner-7',
-    name: 'BioPharma Manipulação Veterinária',
-    category: 'Farmácia Veterinária',
-    tagline: 'Medicamentos manipulados em biscoitos e pastas palatáveis',
-    image: 'https://images.unsplash.com/photo-1601758228041-f3b2795255f1?auto=format&fit=crop&w=800&q=80',
-    url: 'https://biopharmavet.com.br',
-    badge: 'Manipulação',
-    discountOrBenefit: '10% de desconto em fórmulas contínuas'
-  },
-  {
-    id: 'partner-8',
-    name: 'EducaCão Comportamento Animal',
-    category: 'Adestramento Positivo',
-    tagline: 'Treinamentos com reforço positivo para adaptação ao novo lar',
-    image: 'https://images.unsplash.com/photo-1587300003388-59208cc962cb?auto=format&fit=crop&w=800&q=80',
-    url: 'https://educacaoanimal.com.br',
-    badge: 'Comportamental',
-    discountOrBenefit: 'Consultoria de adaptação gratuita'
   }
 ];

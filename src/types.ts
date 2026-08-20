@@ -14,6 +14,21 @@ export interface User {
   createdAt?: string;
 }
 
+export interface OngSession {
+  id: string;
+  name: string;
+  email: string;
+  cnpj: string;
+  role: 'ong' | 'admin';
+  phone?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  image?: string;
+  description?: string;
+  createdAt?: string;
+}
+
 export interface Pet {
   id: string;
   name: string;
@@ -41,6 +56,7 @@ export interface Pet {
 
 export interface ONG {
   id: string;
+  cnpj: string;
   name: string;
   city: string;
   state: string;
@@ -50,7 +66,9 @@ export interface ONG {
   petsCount: number;
   featured?: boolean;
   email?: string;
+  passwordHash?: string;
   address?: string;
+  createdAt?: string;
 }
 
 export interface Solicitation {
@@ -112,8 +130,7 @@ export type ActiveTab =
   | 'ongs'
   | 'como-apoiar'
   | 'sobre-nos'
+  | 'minhas-adocoes'
+  | 'painel-admin'
   | 'painel-ong'
-  | 'acolhimento'
-  | 'status-interesse'
-  | 'solicitacoes-adocao'
-  | 'triagem-incompleta';
+  | 'acolhimento';
