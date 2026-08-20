@@ -7,13 +7,17 @@ interface AdoptionViewProps {
   onSelectPet: (pet: Pet) => void;
   onToggleFavorite: (petId: string) => void;
   onQueroAjudar: () => void;
+  onNavigateToMyAdoptions?: () => void;
+  activeAdoptionsCount?: number;
 }
 
 export const AdoptionView: React.FC<AdoptionViewProps> = ({
   pets,
   onSelectPet,
   onToggleFavorite,
-  onQueroAjudar
+  onQueroAjudar,
+  onNavigateToMyAdoptions,
+  activeAdoptionsCount = 0
 }) => {
   const [selectedSpecies, setSelectedSpecies] = useState<string>('all');
   const [selectedSize, setSelectedSize] = useState<string>('all');
@@ -78,6 +82,26 @@ export const AdoptionView: React.FC<AdoptionViewProps> = ({
 
   return (
     <div className="flex flex-col min-h-screen">
+      {/* Banner Superior se houver Adoções em Andamento */}
+      {activeAdoptionsCount > 0 && onNavigateToMyAdoptions && (
+        <div className="bg-[#074469] text-white py-3 px-4 md:px-16 text-xs sm:text-sm font-['Be_Vietnam_Pro'] shadow-xs">
+          <div className="max-w-7xl mx-auto w-full flex flex-col sm:flex-row items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-[#a0efd6] text-lg">assignment</span>
+              <span>
+                Você possui <strong>{activeAdoptionsCount} processo(s) de adoção</strong> em andamento no MatchPet.
+              </span>
+            </div>
+            <button
+              onClick={onNavigateToMyAdoptions}
+              className="bg-[#a0efd6] hover:bg-white text-[#074469] font-bold text-xs px-4 py-1.5 rounded-lg transition-colors cursor-pointer shrink-0 shadow-2xs"
+            >
+              Acompanhar Minhas Adoções →
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Hero Section */}
       <section className="relative w-full overflow-hidden bg-[#f2f4f6] py-12 md:py-20 px-4 md:px-16 border-b border-[#e0e3e5]/60">
         <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 items-center">

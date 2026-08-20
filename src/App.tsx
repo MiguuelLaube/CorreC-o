@@ -194,12 +194,23 @@ export default function App() {
     email: string;
     date: string;
     notes: string;
+    housingType?: string;
+    hasOtherPets?: string;
+    hasChildrenOrElderly?: string;
+    hoursAlone?: string;
+    visitPreference?: string;
   }) => {
     if (!petForInterestModal) return;
 
+    const matchedOng = ongs.find(
+      (o) =>
+        o.id === petForInterestModal.ongId ||
+        o.name.toLowerCase() === petForInterestModal.ongName?.toLowerCase()
+    );
+
     const newSolicitation: Solicitation = {
       id: `sol-${Date.now()}`,
-      type: 'Visita',
+      type: 'Adoção',
       petId: petForInterestModal.id,
       petName: petForInterestModal.name,
       petImage: petForInterestModal.mainImage,
@@ -207,18 +218,34 @@ export default function App() {
       requesterEmail: currentUser?.email || data.email,
       userId: currentUser?.id,
       phone: data.phone,
-      email: data.email,
-      dateOrDetails: `${data.date}. ${data.notes}`,
+      email: currentUser?.email || data.email,
+      dateOrDetails: data.visitPreference || data.date,
       status: 'pending',
-      ongId: petForInterestModal.ongId || 'ong-amigos-de-patas',
-      ongName: petForInterestModal.ongName || 'ONG Parceira',
+      ongId: petForInterestModal.ongId || matchedOng?.id || 'ong-amigos-de-patas',
+      ongName: petForInterestModal.ongName || matchedOng?.name || 'ONG Parceira',
+      ongPhone: matchedOng?.phone || '(11) 98765-4321',
+      ongEmail: matchedOng?.email || 'contato@matchpet.ong.br',
+      ongAddress: matchedOng?.address || `${matchedOng?.city || 'São Paulo'} - ${matchedOng?.state || 'SP'}`,
+      housingType: data.housingType,
+      hasOtherPets: data.hasOtherPets,
+      hasChildrenOrElderly: data.hasChildrenOrElderly,
+      hoursAlone: data.hoursAlone,
+      visitPreference: data.visitPreference || data.date,
+      notes: data.notes,
       createdAt: new Date().toISOString()
     };
 
     const saved = await dbService.saveSolicitation(newSolicitation);
     setSolicitations((prev) => [saved, ...prev]);
-    triggerToast(`Interesse em ${petForInterestModal.name} enviado para a ONG!`);
-    setPetForInterestModal(null);
+    triggerToast(`Interesse em ${petForInterestModal.name} enviado para a ONG com sucesso!`);
+  };
+
+  const handleCancelSolicitation = async (id: string) => {
+    await dbService.updateSolicitationStatus(id, 'canceled');
+    setSolicitations((prev) =>
+      prev.map((s) => (s.id === id ? { ...s, status: 'canceled' } : s))
+    );
+    triggerToast('Manifestação de interesse cancelada.');
   };
 
   const handleApproveSolicitation = async (id: string) => {
@@ -359,13 +386,8 @@ export default function App() {
               pet={selectedPet}
               onBack={() => setSelectedPet(null)}
               onToggleFavorite={() => handleToggleFavorite(selectedPet.id)}
-              onManifestInterest={() => {
-                if (!currentUser) {
-                  setAuthModalProfile('user');
-                  triggerToast('Faça login como adotante para manifestar interesse.');
-                } else {
-                  setPetForInterestModal(selectedPet);
-                }
+              onManifestarInteresse={(pet) => {
+                setPetForInterestModal(pet);
               }}
             />
           ) : (
@@ -376,15 +398,17 @@ export default function App() {
                   pets={pets}
                   onSelectPet={(pet) => setSelectedPet(pet)}
                   onToggleFavorite={handleToggleFavorite}
-                  onManifestInterest={(pet) => {
-                    if (!currentUser) {
-                      setAuthModalProfile('user');
-                      triggerToast('Faça login como adotante para manifestar interesse.');
-                    } else {
-                      setPetForInterestModal(pet);
-                    }
-                  }}
-                  onGoToFoster={() => setActiveTab('acolhimento')}
+                  onQueroAjudar={() => setActiveTab('acolhimento')}
+                  onNavigateToMyAdoptions={() => setActiveTab('minhas-adocoes')}
+                  activeAdoptionsCount={
+                    currentUser
+                      ? solicitations.filter(
+                          (s) =>
+                            s.userId === currentUser.id ||
+                            (s.requesterEmail && s.requesterEmail.toLowerCase() === currentUser.email.toLowerCase())
+                        ).length
+                      : 0
+                  }
                 />
               )}
 
@@ -412,6 +436,7 @@ export default function App() {
                     onSelectPet={(pet) => setSelectedPet(pet)}
                     onOpenNewFoster={() => setActiveTab('acolhimento')}
                     onOpenAdoptionGallery={() => setActiveTab('adotar')}
+                    onCancelSolicitation={handleCancelSolicitation}
                   />
                 ) : (
                   <div className="flex-grow flex items-center justify-center min-h-[60vh] px-4">
@@ -553,6 +578,10 @@ export default function App() {
           onRequireLogin={() => {
             setPetForInterestModal(null);
             setAuthModalProfile('user');
+          }}
+          onGoToMyAdoptions={() => {
+            setPetForInterestModal(null);
+            setActiveTab('minhas-adocoes');
           }}
           onSubmit={handleAddSolicitation}
         />

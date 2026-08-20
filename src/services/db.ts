@@ -142,15 +142,16 @@ function mapOngToSupabase(ong: ONG): any {
 function mapSolicitationFromSupabase(row: any): Solicitation {
   return {
     id: String(row.id),
-    type: (row.type === 'adocao' ? 'Adoção' : row.type === 'acolhimento' ? 'Visita' : (row.type || 'Visita')) as any,
+    type: (row.type === 'adocao' ? 'Adoção' : row.type === 'acolhimento' ? 'Visita' : (row.type || 'Interesse')) as any,
     petId: String(row.pet_id || ''),
     petName: row.pet_name || 'Pet Cadastrado',
     petImage: row.pet_image,
     requesterName: row.requester_name || 'Solicitante',
     requesterEmail: row.requester_email || row.email,
+    userId: row.user_id,
     dateOrDetails: row.date_or_details || row.mensagem || '',
     status: (row.status === 'aprovada' ? 'approved' : row.status === 'recusada' ? 'rejected' : (row.status || 'pending')) as any,
-    adoptionGranted: Boolean(row.adoption_granted ?? (row.status === 'approved' && row.type === 'Adoção')),
+    adoptionGranted: Boolean(row.adoption_granted ?? (row.status === 'approved')),
     phone: row.phone || '',
     email: row.email || '',
     ongId: row.ong_id || 'ong-amigos-de-patas',
@@ -158,7 +159,14 @@ function mapSolicitationFromSupabase(row: any): Solicitation {
     ongPhone: row.ong_phone || '(11) 98765-4321',
     ongEmail: row.ong_email || 'contato@amigosdepatas.org.br',
     ongAddress: row.ong_address || 'Av. Paulista, 1200 - São Paulo, SP',
-    createdAt: row.created_at || new Date().toISOString()
+    housingType: row.housing_type,
+    hasOtherPets: row.has_other_pets,
+    hasChildrenOrElderly: row.has_children_or_elderly,
+    hoursAlone: row.hours_alone,
+    visitPreference: row.visit_preference,
+    notes: row.notes,
+    createdAt: row.created_at || new Date().toISOString(),
+    updatedAt: row.updated_at
   };
 }
 
@@ -171,6 +179,7 @@ function mapSolicitationToSupabase(sol: Solicitation): any {
     pet_image: sol.petImage,
     requester_name: sol.requesterName,
     requester_email: sol.requesterEmail || sol.email,
+    user_id: sol.userId,
     date_or_details: sol.dateOrDetails,
     status: sol.status,
     adoption_granted: sol.adoptionGranted ?? false,
@@ -180,7 +189,13 @@ function mapSolicitationToSupabase(sol: Solicitation): any {
     ong_name: sol.ongName,
     ong_phone: sol.ongPhone,
     ong_email: sol.ongEmail,
-    ong_address: sol.ongAddress
+    ong_address: sol.ongAddress,
+    housing_type: sol.housingType,
+    has_other_pets: sol.hasOtherPets,
+    has_children_or_elderly: sol.hasChildrenOrElderly,
+    hours_alone: sol.hoursAlone,
+    visit_preference: sol.visitPreference,
+    notes: sol.notes
   };
 }
 
@@ -458,16 +473,51 @@ export const dbService = {
     return solicitation;
   },
 
-  async updateSolicitationStatus(id: string, status: 'approved' | 'rejected' | 'pending'): Promise<void> {
+  async updateSolicitationStatus(
+    id: string,
+    status: 'pending' | 'in_review' | 'approved' | 'rejected' | 'completed' | 'canceled',
+    extraFields?: Partial<Solicitation>
+  ): Promise<void> {
     const current = getLocal<Solicitation[]>(STORAGE_KEYS.SOLICITATIONS, INITIAL_SOLICITATIONS);
-    const updated = current.map((s) => (s.id === id ? { ...s, status, adoptionGranted: status === 'approved' } : s));
+    const updated = current.map((s) =>
+      s.id === id
+        ? {
+            ...s,
+            ...extraFields,
+            status,
+            adoptionGranted: status === 'approved' || status === 'completed',
+            updatedAt: new Date().toISOString()
+          }
+        : s
+    );
     setLocal(STORAGE_KEYS.SOLICITATIONS, updated);
 
     if (isSupabaseConfigured) {
       try {
-        await supabase.from('solicitations').update({ status, adoption_granted: status === 'approved' }).eq('id', id);
+        const payload: any = {
+          status,
+          adoption_granted: status === 'approved' || status === 'completed',
+          updated_at: new Date().toISOString()
+        };
+        if (extraFields?.dateOrDetails) payload.date_or_details = extraFields.dateOrDetails;
+        if (extraFields?.notes) payload.notes = extraFields.notes;
+        await supabase.from('solicitations').update(payload).eq('id', id);
       } catch (err) {
         console.error('Erro ao atualizar status no Supabase:', err);
+      }
+    }
+  },
+
+  async deleteSolicitation(id: string): Promise<void> {
+    const current = getLocal<Solicitation[]>(STORAGE_KEYS.SOLICITATIONS, INITIAL_SOLICITATIONS);
+    const updated = current.filter((s) => s.id !== id);
+    setLocal(STORAGE_KEYS.SOLICITATIONS, updated);
+
+    if (isSupabaseConfigured) {
+      try {
+        await supabase.from('solicitations').delete().eq('id', id);
+      } catch (err) {
+        console.error('Erro ao excluir solicitação no Supabase:', err);
       }
     }
   },

@@ -32,7 +32,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   };
 
   return (
-    <header className="fixed top-0 w-full z-50 shadow-xs bg-[#f7f9fb]/95 backdrop-blur-md border-b border-[#e0e3e5]/80">
+    <header className="fixed top-0 w-full z-50 shadow-xs bg-[#f7f9fb]/95 backdrop-blur-md border-b border-[#e0e3e5]/80 font-['Be_Vietnam_Pro']">
       <div className="flex justify-between items-center px-4 md:px-16 h-20 max-w-7xl mx-auto">
         {/* Brand: MatchPet */}
         <div className="flex items-center gap-3">
@@ -53,7 +53,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
 
         {/* Navigation Links (Desktop) */}
-        <nav className="hidden md:flex gap-4 lg:gap-6 items-center font-['Be_Vietnam_Pro'] text-sm lg:text-base">
+        <nav className="hidden md:flex gap-4 lg:gap-6 items-center text-sm lg:text-base">
           <button
             onClick={() => handleNav('adotar')}
             className={`transition-colors duration-200 cursor-pointer font-medium pb-1 ${
@@ -76,20 +76,21 @@ export const Navbar: React.FC<NavbarProps> = ({
             ONGs
           </button>
 
-          {/* Aba Unificada para o Adotante Logado */}
-          {currentUser && (
-            <button
-              onClick={() => handleNav('minhas-adocoes')}
-              className={`transition-colors duration-200 cursor-pointer font-medium pb-1 flex items-center gap-1.5 ${
-                activeTab === 'minhas-adocoes'
-                  ? 'text-[#074469] border-b-2 border-[#074469] font-bold'
-                  : 'text-[#41474e] hover:text-[#074469]'
-              }`}
-            >
-              <span className="material-symbols-outlined text-base">assignment</span>
-              <span>Minhas Adoções</span>
-            </button>
-          )}
+          {/* Aba Minhas Adoções - Destaque na Navegação Principal */}
+          <button
+            onClick={() => handleNav('minhas-adocoes')}
+            className={`transition-colors duration-200 cursor-pointer font-medium pb-1 flex items-center gap-1.5 ${
+              activeTab === 'minhas-adocoes'
+                ? 'text-[#074469] border-b-2 border-[#074469] font-bold'
+                : 'text-[#41474e] hover:text-[#074469]'
+            }`}
+          >
+            <span className="material-symbols-outlined text-base">assignment</span>
+            <span>Minhas Adoções</span>
+            {currentUser && (
+              <span className="w-2 h-2 rounded-full bg-[#126b57] animate-pulse" title="Sessão ativa" />
+            )}
+          </button>
 
           {/* Painel Exclusivo da ONG Logada */}
           {isOng && (
@@ -149,7 +150,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         </nav>
 
         {/* Actions & Session Badges (Desktop) */}
-        <div className="hidden md:flex items-center gap-3 font-['Be_Vietnam_Pro'] text-sm">
+        <div className="hidden md:flex items-center gap-3 text-sm">
           {favoritesCount > 0 && (
             <span className="flex items-center gap-1 text-[#6d2f00] bg-[#ffdbc9] px-2.5 py-1 rounded-full text-xs font-bold">
               <span className="material-symbols-outlined text-sm material-symbols-fill text-[#914100]">favorite</span>
@@ -241,7 +242,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
       {/* Mobile Drawer */}
       {mobileMenuOpen && (
-        <div className="md:hidden bg-[#f7f9fb] border-b border-[#e0e3e5] px-6 py-4 space-y-2.5 font-['Be_Vietnam_Pro'] shadow-lg animate-in slide-in-from-top duration-200">
+        <div className="md:hidden bg-[#f7f9fb] border-b border-[#e0e3e5] px-6 py-4 space-y-2.5 shadow-lg animate-in slide-in-from-top duration-200">
           {currentUser && (
             <div className="flex items-center justify-between pb-3 border-b border-[#e0e3e5]">
               <div className="flex items-center gap-2">
@@ -303,14 +304,16 @@ export const Navbar: React.FC<NavbarProps> = ({
             ONGs Parceiras
           </button>
 
-          {currentUser && (
-            <button
-              onClick={() => handleNav('minhas-adocoes')}
-              className={`block w-full text-left py-2 px-3 rounded-lg ${activeTab === 'minhas-adocoes' ? 'bg-[#074469] text-white font-bold' : 'text-[#41474e]'}`}
-            >
-              Minhas Adoções
-            </button>
-          )}
+          {/* Minhas Adoções no Menu Mobile */}
+          <button
+            onClick={() => handleNav('minhas-adocoes')}
+            className={`block w-full text-left py-2 px-3 rounded-lg flex items-center gap-2 ${
+              activeTab === 'minhas-adocoes' ? 'bg-[#074469] text-white font-bold' : 'text-[#41474e]'
+            }`}
+          >
+            <span className="material-symbols-outlined text-sm">assignment</span>
+            <span>Minhas Adoções</span>
+          </button>
 
           {isOng && (
             <button

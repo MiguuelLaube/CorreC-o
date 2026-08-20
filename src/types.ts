@@ -73,7 +73,7 @@ export interface ONG {
 
 export interface Solicitation {
   id: string;
-  type: 'Visita' | 'Adoção';
+  type: 'Visita' | 'Adoção' | 'Interesse';
   petId: string;
   petName: string;
   petImage?: string;
@@ -81,7 +81,7 @@ export interface Solicitation {
   requesterEmail?: string;
   userId?: string;
   dateOrDetails: string;
-  status: 'pending' | 'in_review' | 'approved' | 'rejected';
+  status: 'pending' | 'in_review' | 'approved' | 'rejected' | 'completed' | 'canceled';
   phone?: string;
   email?: string;
   ongId?: string;
@@ -90,7 +90,14 @@ export interface Solicitation {
   ongEmail?: string;
   ongAddress?: string;
   adoptionGranted?: boolean;
+  housingType?: string;
+  hasOtherPets?: string;
+  hasChildrenOrElderly?: string;
+  hoursAlone?: string;
+  visitPreference?: string;
+  notes?: string;
   createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface FosterRequest {

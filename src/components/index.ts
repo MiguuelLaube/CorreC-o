@@ -9,3 +9,4 @@ export * from './UserAdoptionsView';
 export * from './FosterFormView';
 export * from './AboutView';
 export * from './Modals';
+export * from './AdoptionInterestModal';
