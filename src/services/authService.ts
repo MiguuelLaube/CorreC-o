@@ -13,6 +13,17 @@ export const ADMIN_CREDENTIALS = {
 };
 
 /**
+ * Helper para garantir que requisições ao Supabase nunca travem a UI
+ */
+async function withTimeout<T>(promiseLike: PromiseLike<T> | Promise<T>, ms = 2500): Promise<T> {
+  const promise = Promise.resolve(promiseLike);
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) => setTimeout(() => reject(new Error('Timeout de conexão com banco')), ms))
+  ]);
+}
+
+/**
  * Criptografia de senha usando SHA-256 (Web Crypto API)
  * Transforma a senha em texto plano em um hash hexadecimal irreversível
  */
@@ -78,32 +89,34 @@ export const authService = {
         saveStoredUsers(localUsers);
       }
 
-      // Se Supabase estiver conectado, sincroniza o admin no banco remoto
+      // Se Supabase estiver conectado, sincroniza o admin no banco remoto de forma não-bloqueante
       if (isSupabaseConfigured) {
-        try {
-          const { data } = await supabase
+        withTimeout(
+          supabase
             .from('usuarios')
             .select('id, email, senha_hash, role')
             .eq('email', ADMIN_CREDENTIALS.email.toLowerCase())
-            .maybeSingle();
-
-          if (!data) {
-            await supabase.from('usuarios').insert({
-              nome: ADMIN_CREDENTIALS.name,
-              email: ADMIN_CREDENTIALS.email.toLowerCase(),
-              senha_hash: adminHash,
-              role: 'admin'
-            });
-            console.log('Conta de Administrador cadastrada no Supabase.');
-          } else if (data.role !== 'admin' || data.senha_hash !== adminHash) {
-            await supabase
-              .from('usuarios')
-              .update({ role: 'admin', senha_hash: adminHash })
-              .eq('email', ADMIN_CREDENTIALS.email.toLowerCase());
-          }
-        } catch (dbErr) {
-          console.warn('Sincronização de admin no Supabase (não-bloqueante):', dbErr);
-        }
+            .maybeSingle(),
+          2000
+        )
+          .then(async ({ data }: any) => {
+            if (!data) {
+              await supabase.from('usuarios').insert({
+                nome: ADMIN_CREDENTIALS.name,
+                email: ADMIN_CREDENTIALS.email.toLowerCase(),
+                senha_hash: adminHash,
+                role: 'admin'
+              });
+            } else if (data.role !== 'admin' || data.senha_hash !== adminHash) {
+              await supabase
+                .from('usuarios')
+                .update({ role: 'admin', senha_hash: adminHash })
+                .eq('email', ADMIN_CREDENTIALS.email.toLowerCase());
+            }
+          })
+          .catch((dbErr) => {
+            console.warn('Sincronização de admin no Supabase (não-bloqueante):', dbErr);
+          });
       }
     } catch (error) {
       console.error('Erro ao inicializar authService:', error);
@@ -139,38 +152,8 @@ export const authService = {
 
     const inputHash = await hashPassword(password);
 
-    // 1. Tentar autenticação via Supabase se configurado
-    if (isSupabaseConfigured) {
-      try {
-        const { data, error } = await supabase
-          .from('usuarios')
-          .select('*')
-          .eq('email', email)
-          .maybeSingle();
-
-        if (!error && data) {
-          if (data.senha_hash === inputHash) {
-            const user: User = {
-              id: String(data.id),
-              name: data.nome || data.name || (data.role === 'admin' ? 'Administrador' : 'Usuário'),
-              email: data.email,
-              role: (data.role === 'admin' || email === ADMIN_CREDENTIALS.email) ? 'admin' : 'user',
-              phone: data.telefone || data.phone,
-              createdAt: data.created_at
-            };
-            localStorage.setItem(AUTH_USER_KEY, JSON.stringify(user));
-            return { success: true, user };
-          } else {
-            return { success: false, error: 'Senha incorreta. Tente novamente.' };
-          }
-        }
-      } catch (err) {
-        console.warn('Falha na autenticação via Supabase, verificando credenciais locais:', err);
-      }
-    }
-
-    // 2. Validação direta para a conta fixa de Administrador
-    if (email === ADMIN_CREDENTIALS.email) {
+    // 1. Validação Instantânea para a conta fixa de Administrador
+    if (email === ADMIN_CREDENTIALS.email.toLowerCase()) {
       const adminHash = await hashPassword(ADMIN_CREDENTIALS.plainPassword);
       if (inputHash === adminHash) {
         const adminUser: User = {
@@ -184,6 +167,39 @@ export const authService = {
         return { success: true, user: adminUser };
       } else {
         return { success: false, error: 'Senha de administrador incorreta.' };
+      }
+    }
+
+    // 2. Tentar autenticação via Supabase com timeout de proteção
+    if (isSupabaseConfigured) {
+      try {
+        const { data, error }: any = await withTimeout(
+          supabase
+            .from('usuarios')
+            .select('*')
+            .eq('email', email)
+            .maybeSingle(),
+          2500
+        );
+
+        if (!error && data) {
+          if (data.senha_hash === inputHash) {
+            const user: User = {
+              id: String(data.id),
+              name: data.nome || data.name || (data.role === 'admin' ? 'Administrador' : 'Usuário'),
+              email: data.email,
+              role: data.role === 'admin' ? 'admin' : 'user',
+              phone: data.telefone || data.phone,
+              createdAt: data.created_at
+            };
+            localStorage.setItem(AUTH_USER_KEY, JSON.stringify(user));
+            return { success: true, user };
+          } else {
+            return { success: false, error: 'Senha incorreta. Tente novamente.' };
+          }
+        }
+      } catch (err) {
+        console.warn('Falha na autenticação via Supabase (timeout ou offline), verificando credenciais locais:', err);
       }
     }
 
@@ -203,7 +219,7 @@ export const authService = {
       id: foundUser.id,
       name: foundUser.name,
       email: foundUser.email,
-      role: foundUser.role || (foundUser.email === ADMIN_CREDENTIALS.email ? 'admin' : 'user'),
+      role: foundUser.role || 'user',
       phone: foundUser.phone,
       createdAt: foundUser.createdAt
     };
@@ -264,22 +280,20 @@ export const authService = {
     }
     saveStoredUsers(localUsers);
 
-    // Salvar no Supabase se configurado
+    // Salvar no Supabase de forma protegida com timeout
     if (isSupabaseConfigured) {
-      try {
-        const { error } = await supabase.from('usuarios').insert({
+      withTimeout(
+        supabase.from('usuarios').insert({
           nome: name,
           email,
           senha_hash: passwordHash,
           role,
           telefone: phone
-        });
-        if (error) {
-          console.warn('Erro ao inserir usuário no Supabase:', error.message);
-        }
-      } catch (dbErr) {
-        console.error('Falha de conexão com Supabase ao registrar usuário:', dbErr);
-      }
+        }),
+        2500
+      ).catch((dbErr) => {
+        console.warn('Erro ao inserir usuário no Supabase (não-bloqueante):', dbErr);
+      });
     }
 
     const sessionUser: User = {
