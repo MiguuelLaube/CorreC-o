@@ -3,6 +3,9 @@
 -- Executável múltiplas vezes sem conflitos (Idempotente)
 -- ==============================================================================
 
+-- Habilitar extensão pgcrypto
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
 -- 1. TABELA DE USUÁRIOS / AUTENTICAÇÃO COM NÍVEIS DE PERMISSÃO (ADMIN / USER)
 CREATE TABLE IF NOT EXISTS public.usuarios (
     id SERIAL PRIMARY KEY,
@@ -62,11 +65,11 @@ CREATE TABLE IF NOT EXISTS public.pets (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- 4. TABELA DE SOLICITAÇÕES (VISITAS E ADOÇÕES)
+-- 4. TABELA DE SOLICITAÇÕES (VISITAS E ADOÇÕES) COM ID TEXT FLEXÍVEL
 CREATE TABLE IF NOT EXISTS public.solicitations (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id TEXT PRIMARY KEY,
     type TEXT NOT NULL CHECK (type IN ('Visita', 'Adoção')),
-    pet_id TEXT REFERENCES public.pets(id) ON DELETE CASCADE,
+    pet_id TEXT,
     pet_name TEXT NOT NULL,
     pet_image TEXT,
     requester_name TEXT NOT NULL,
@@ -84,9 +87,19 @@ CREATE TABLE IF NOT EXISTS public.solicitations (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- 5. TABELA DE PEDIDOS DE ACOLHIMENTO E TRIAGEM
+-- Converter coluna ID para TEXT caso a tabela já existisse como UUID
+DO $$ BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_schema = 'public' AND table_name = 'solicitations' AND data_type = 'uuid'
+    ) THEN
+        ALTER TABLE public.solicitations ALTER COLUMN id TYPE TEXT USING id::text;
+    END IF;
+END $$;
+
+-- 5. TABELA DE PEDIDOS DE ACOLHIMENTO E TRIAGEM COM ID TEXT FLEXÍVEL
 CREATE TABLE IF NOT EXISTS public.foster_requests (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id TEXT PRIMARY KEY,
     pet_name TEXT NOT NULL,
     species TEXT NOT NULL,
     size TEXT DEFAULT 'Médio',
@@ -104,6 +117,16 @@ CREATE TABLE IF NOT EXISTS public.foster_requests (
     accepted_by_ong_address TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
+
+-- Converter coluna ID para TEXT caso a tabela já existisse como UUID
+DO $$ BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_schema = 'public' AND table_name = 'foster_requests' AND data_type = 'uuid'
+    ) THEN
+        ALTER TABLE public.foster_requests ALTER COLUMN id TYPE TEXT USING id::text;
+    END IF;
+END $$;
 
 -- 6. TABELA DE PARCEIROS (PATROCINADORES)
 CREATE TABLE IF NOT EXISTS public.partners (
@@ -123,8 +146,6 @@ CREATE TABLE IF NOT EXISTS public.partners (
 -- Email: admin@gmail.com
 -- Senha plana: hiqufxAqTYouTeJmYqFYPHFELoUEXwtc
 -- ==============================================================================
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
-
 INSERT INTO public.usuarios (nome, email, senha_hash, role)
 VALUES (
     'Administrador CorrenteCão',

@@ -161,15 +161,22 @@ function mapSolicitationFromSupabase(row: any): Solicitation {
 
 function mapSolicitationToSupabase(sol: Solicitation): any {
   return {
-    id: sol.id,
+    id: String(sol.id),
     type: sol.type,
     pet_id: sol.petId,
     pet_name: sol.petName,
+    pet_image: sol.petImage,
     requester_name: sol.requesterName,
+    requester_email: sol.requesterEmail || sol.email,
     date_or_details: sol.dateOrDetails,
     status: sol.status,
     phone: sol.phone,
-    email: sol.email
+    email: sol.email,
+    ong_id: sol.ongId,
+    ong_name: sol.ongName,
+    ong_phone: sol.ongPhone,
+    ong_email: sol.ongEmail,
+    ong_address: sol.ongAddress
   };
 }
 
@@ -183,6 +190,7 @@ function mapFosterFromSupabase(row: any): FosterRequest {
     status: (row.status === 'aprovada' ? 'accepted' : row.status === 'recusada' ? 'declined' : (row.status || 'pending')) as any,
     photoUrl: row.photo_url || row.dados_animal_proprio?.foto,
     requesterName: row.requester_name,
+    requesterEmail: row.requester_email || row.email,
     phone: row.phone,
     acceptedByOngName: row.accepted_by_ong_name || (row.status === 'accepted' ? 'Amigos de Patas' : undefined),
     acceptedByOngPhone: row.accepted_by_ong_phone || (row.status === 'accepted' ? '(11) 98765-4321' : undefined),
@@ -192,7 +200,7 @@ function mapFosterFromSupabase(row: any): FosterRequest {
 
 function mapFosterToSupabase(foster: FosterRequest): any {
   return {
-    id: foster.id,
+    id: String(foster.id),
     pet_name: foster.petName,
     species: foster.species,
     reason: foster.reason,
@@ -200,7 +208,11 @@ function mapFosterToSupabase(foster: FosterRequest): any {
     status: foster.status,
     photo_url: foster.photoUrl,
     requester_name: foster.requesterName,
-    phone: foster.phone
+    requester_email: foster.requesterEmail,
+    phone: foster.phone,
+    accepted_by_ong_name: foster.acceptedByOngName,
+    accepted_by_ong_phone: foster.acceptedByOngPhone,
+    accepted_by_ong_address: foster.acceptedByOngAddress
   };
 }
 
@@ -412,7 +424,7 @@ export const dbService = {
         }
         if (!error && data && data.length === 0) {
           const seeds = INITIAL_SOLICITATIONS.map(mapSolicitationToSupabase);
-          await supabase.from('solicitations').insert(seeds);
+          await supabase.from('solicitations').upsert(seeds);
           setLocal(STORAGE_KEYS.SOLICITATIONS, INITIAL_SOLICITATIONS);
           return INITIAL_SOLICITATIONS;
         }
@@ -431,7 +443,7 @@ export const dbService = {
     if (isSupabaseConfigured) {
       try {
         const payload = mapSolicitationToSupabase(solicitation);
-        await supabase.from('solicitations').insert(payload);
+        await supabase.from('solicitations').upsert(payload);
       } catch (err) {
         console.error('Erro ao salvar solicitação no Supabase:', err);
       }
@@ -472,7 +484,7 @@ export const dbService = {
         }
         if (!error && data && data.length === 0) {
           const seeds = INITIAL_FOSTER_REQUESTS.map(mapFosterToSupabase);
-          await supabase.from('foster_requests').insert(seeds);
+          await supabase.from('foster_requests').upsert(seeds);
           setLocal(STORAGE_KEYS.FOSTER_REQUESTS, INITIAL_FOSTER_REQUESTS);
           return INITIAL_FOSTER_REQUESTS;
         }
@@ -491,7 +503,7 @@ export const dbService = {
     if (isSupabaseConfigured) {
       try {
         const payload = mapFosterToSupabase(foster);
-        await supabase.from('foster_requests').insert(payload);
+        await supabase.from('foster_requests').upsert(payload);
       } catch (err) {
         console.error('Erro ao salvar acolhimento no Supabase:', err);
       }
