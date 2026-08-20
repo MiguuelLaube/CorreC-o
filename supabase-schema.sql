@@ -1,24 +1,34 @@
 -- ==============================================================================
 -- SCHEMA MATCHPET - SISTEMA DE ADOÇÃO COM AUTENTICAÇÃO MULTI-PERFIL E ISOLAMENTO
+-- SCRIPT TOTALMENTE IDEMPOTENTE E RESILIENTE A TABELAS PRÉ-EXISTENTES
 -- ==============================================================================
 
 -- 1. TABELA DE ONGS CREDENCIADAS
 CREATE TABLE IF NOT EXISTS public.ongs (
     id TEXT PRIMARY KEY,
-    cnpj VARCHAR(20) UNIQUE NOT NULL,
+    cnpj VARCHAR(20),
     name TEXT NOT NULL,
     city TEXT NOT NULL,
     state VARCHAR(2) NOT NULL,
     phone TEXT NOT NULL,
-    email TEXT UNIQUE NOT NULL,
-    senha_hash TEXT NOT NULL,
-    address TEXT NOT NULL,
+    email TEXT,
+    senha_hash TEXT,
+    address TEXT,
     image TEXT,
     description TEXT,
     pets_count INTEGER DEFAULT 0,
     featured BOOLEAN DEFAULT false,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
+
+-- Garantir que todas as colunas de ONGs existam caso a tabela já tenha sido criada anteriormente
+ALTER TABLE public.ongs ADD COLUMN IF NOT EXISTS cnpj VARCHAR(20);
+ALTER TABLE public.ongs ADD COLUMN IF NOT EXISTS email TEXT;
+ALTER TABLE public.ongs ADD COLUMN IF NOT EXISTS senha_hash TEXT;
+ALTER TABLE public.ongs ADD COLUMN IF NOT EXISTS address TEXT;
+ALTER TABLE public.ongs ADD COLUMN IF NOT EXISTS pets_count INTEGER DEFAULT 0;
+ALTER TABLE public.ongs ADD COLUMN IF NOT EXISTS featured BOOLEAN DEFAULT false;
+
 
 -- 2. TABELA DE USUÁRIOS (ADOTANTES E ADMIN)
 CREATE TABLE IF NOT EXISTS public.usuarios (
@@ -30,6 +40,10 @@ CREATE TABLE IF NOT EXISTS public.usuarios (
     telefone TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
+
+ALTER TABLE public.usuarios ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'user';
+ALTER TABLE public.usuarios ADD COLUMN IF NOT EXISTS telefone TEXT;
+
 
 -- 3. TABELA DE PETS (VINCULADOS AUTOMATICAMENTE POR ONG_ID)
 CREATE TABLE IF NOT EXISTS public.pets (
@@ -50,13 +64,35 @@ CREATE TABLE IF NOT EXISTS public.pets (
     special_needs BOOLEAN DEFAULT false,
     main_image TEXT NOT NULL,
     gallery_images TEXT[] DEFAULT '{}',
-    ong_id TEXT NOT NULL,
-    ong_name TEXT NOT NULL,
+    ong_id TEXT,
+    ong_name TEXT,
     entry_date TEXT,
     status TEXT DEFAULT 'Disponível',
     favorite BOOLEAN DEFAULT false,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
+
+-- Garantir colunas de isolamento e metadados na tabela pets
+ALTER TABLE public.pets ADD COLUMN IF NOT EXISTS ong_id TEXT DEFAULT 'ong-amigos-de-patas';
+ALTER TABLE public.pets ADD COLUMN IF NOT EXISTS ong_name TEXT DEFAULT 'Amigos de Patas';
+ALTER TABLE public.pets ADD COLUMN IF NOT EXISTS species TEXT DEFAULT 'Cachorro';
+ALTER TABLE public.pets ADD COLUMN IF NOT EXISTS breed TEXT;
+ALTER TABLE public.pets ADD COLUMN IF NOT EXISTS city TEXT DEFAULT 'São Paulo';
+ALTER TABLE public.pets ADD COLUMN IF NOT EXISTS state VARCHAR(2) DEFAULT 'SP';
+ALTER TABLE public.pets ADD COLUMN IF NOT EXISTS age TEXT DEFAULT '2 anos';
+ALTER TABLE public.pets ADD COLUMN IF NOT EXISTS age_group TEXT DEFAULT 'Adulto';
+ALTER TABLE public.pets ADD COLUMN IF NOT EXISTS gender TEXT DEFAULT 'Macho';
+ALTER TABLE public.pets ADD COLUMN IF NOT EXISTS size TEXT DEFAULT 'Médio';
+ALTER TABLE public.pets ADD COLUMN IF NOT EXISTS color TEXT;
+ALTER TABLE public.pets ADD COLUMN IF NOT EXISTS vaccination TEXT DEFAULT 'Vacinado';
+ALTER TABLE public.pets ADD COLUMN IF NOT EXISTS castrated BOOLEAN DEFAULT true;
+ALTER TABLE public.pets ADD COLUMN IF NOT EXISTS dewormed BOOLEAN DEFAULT true;
+ALTER TABLE public.pets ADD COLUMN IF NOT EXISTS special_needs BOOLEAN DEFAULT false;
+ALTER TABLE public.pets ADD COLUMN IF NOT EXISTS main_image TEXT;
+ALTER TABLE public.pets ADD COLUMN IF NOT EXISTS gallery_images TEXT[] DEFAULT '{}';
+ALTER TABLE public.pets ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'Disponível';
+ALTER TABLE public.pets ADD COLUMN IF NOT EXISTS favorite BOOLEAN DEFAULT false;
+
 
 -- 4. TABELA DE SOLICITAÇÕES DE ADOÇÃO E VISITAS (ISOLAMENTO POR ONG_ID)
 CREATE TABLE IF NOT EXISTS public.solicitations (
@@ -72,13 +108,25 @@ CREATE TABLE IF NOT EXISTS public.solicitations (
     date_or_details TEXT NOT NULL,
     status TEXT DEFAULT 'pending' NOT NULL, -- 'pending', 'in_review', 'approved', 'rejected'
     adoption_granted BOOLEAN DEFAULT false,
-    ong_id TEXT NOT NULL,
-    ong_name TEXT NOT NULL,
+    ong_id TEXT,
+    ong_name TEXT,
     ong_phone TEXT,
     ong_email TEXT,
     ong_address TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
+
+-- Garantir colunas de isolamento e contato de ONGs na tabela solicitations
+ALTER TABLE public.solicitations ADD COLUMN IF NOT EXISTS ong_id TEXT;
+ALTER TABLE public.solicitations ADD COLUMN IF NOT EXISTS ong_name TEXT;
+ALTER TABLE public.solicitations ADD COLUMN IF NOT EXISTS ong_phone TEXT;
+ALTER TABLE public.solicitations ADD COLUMN IF NOT EXISTS ong_email TEXT;
+ALTER TABLE public.solicitations ADD COLUMN IF NOT EXISTS ong_address TEXT;
+ALTER TABLE public.solicitations ADD COLUMN IF NOT EXISTS adoption_granted BOOLEAN DEFAULT false;
+ALTER TABLE public.solicitations ADD COLUMN IF NOT EXISTS pet_image TEXT;
+ALTER TABLE public.solicitations ADD COLUMN IF NOT EXISTS phone TEXT;
+ALTER TABLE public.solicitations ADD COLUMN IF NOT EXISTS email TEXT;
+
 
 -- 5. TABELA DE PEDIDOS DE ACOLHIMENTO E TRIAGEM
 CREATE TABLE IF NOT EXISTS public.foster_requests (
@@ -100,6 +148,16 @@ CREATE TABLE IF NOT EXISTS public.foster_requests (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
+-- Garantir colunas de aceite e ONG acolhedora na tabela foster_requests
+ALTER TABLE public.foster_requests ADD COLUMN IF NOT EXISTS accepted_by_ong_id TEXT;
+ALTER TABLE public.foster_requests ADD COLUMN IF NOT EXISTS accepted_by_ong_name TEXT;
+ALTER TABLE public.foster_requests ADD COLUMN IF NOT EXISTS accepted_by_ong_phone TEXT;
+ALTER TABLE public.foster_requests ADD COLUMN IF NOT EXISTS accepted_by_ong_address TEXT;
+ALTER TABLE public.foster_requests ADD COLUMN IF NOT EXISTS requester_name TEXT;
+ALTER TABLE public.foster_requests ADD COLUMN IF NOT EXISTS requester_email TEXT;
+ALTER TABLE public.foster_requests ADD COLUMN IF NOT EXISTS photo_url TEXT;
+
+
 -- 6. ÍNDICES DE PERFORMANCE E ISOLAMENTO
 CREATE INDEX IF NOT EXISTS idx_pets_ong_id ON public.pets(ong_id);
 CREATE INDEX IF NOT EXISTS idx_solicitations_ong_id ON public.solicitations(ong_id);
@@ -107,6 +165,7 @@ CREATE INDEX IF NOT EXISTS idx_solicitations_requester ON public.solicitations(r
 CREATE INDEX IF NOT EXISTS idx_foster_accepted_ong ON public.foster_requests(accepted_by_ong_id);
 CREATE INDEX IF NOT EXISTS idx_ongs_cnpj ON public.ongs(cnpj);
 CREATE INDEX IF NOT EXISTS idx_ongs_email ON public.ongs(email);
+
 
 -- 7. SEED INICIAL: CONTA DE ADMINISTRADOR
 -- Senha do admin: hiqufxAqTYouTeJmYqFYPHFELoUEXwtc (Hash SHA-256: 014a09a56a6ecfa1beff5e8eb5047bca8fd1f26e2e50529d4791338d4a9ccbfe)
@@ -119,6 +178,7 @@ VALUES (
 )
 ON CONFLICT (email) DO UPDATE 
 SET senha_hash = EXCLUDED.senha_hash, role = 'admin';
+
 
 -- 8. POLÍTICAS DE ROW LEVEL SECURITY (RLS)
 ALTER TABLE public.ongs ENABLE ROW LEVEL SECURITY;
