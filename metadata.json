@@ -1,0 +1,6 @@
+{
+  "name": "CorrenteCão",
+  "description": "Plataforma de adoção de animais, conexão com ONGs parceiras e painel de gestão.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
