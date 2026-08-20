@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Pet, ONG, Solicitation, FosterRequest, ActiveTab } from './types';
+import { Pet, ONG, Solicitation, FosterRequest, ActiveTab, User } from './types';
 import { INITIAL_PETS, INITIAL_ONGS, INITIAL_SOLICITATIONS, INITIAL_FOSTER_REQUESTS } from './data/initialData';
 import { dbService } from './services/db';
+import { authService } from './services/authService';
 import { isSupabaseConfigured } from './lib/supabase';
 import {
   Navbar,
@@ -24,6 +25,9 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('adotar');
   const [selectedPet, setSelectedPet] = useState<Pet | null>(null);
 
+  // Authentication State
+  const [currentUser, setCurrentUser] = useState<User | null>(() => authService.getCurrentUser());
+
   // Core dynamic state
   const [pets, setPets] = useState<Pet[]>([]);
   const [ongs, setOngs] = useState<ONG[]>([]);
@@ -31,10 +35,13 @@ export default function App() {
   const [fosterRequests, setFosterRequests] = useState<FosterRequest[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
 
-  // Carregar dados persistidos do Banco de Dados / Storage
+  // Carregar dados persistidos e inicializar conta admin
   useEffect(() => {
     async function loadData() {
       try {
+        // Inicializa a conta de administrador no banco (se necessário)
+        await authService.init();
+
         const [loadedPets, loadedOngs, loadedSols, loadedFosters] = await Promise.all([
           dbService.getPets(),
           dbService.getOngs(),
@@ -76,7 +83,26 @@ export default function App() {
     }, 3500);
   };
 
-  // Handlers
+  // Auth Handlers
+  const handleLogout = () => {
+    authService.logout();
+    setCurrentUser(null);
+    if (activeTab === 'painel-ong') {
+      setActiveTab('adotar');
+    }
+    triggerToast('Você encerrou a sessão.');
+  };
+
+  const handleAuthSuccess = (user: User) => {
+    setCurrentUser(user);
+    if (user.role === 'admin') {
+      triggerToast(`Bem-vindo, Administrador (${user.email})! Painel liberado.`);
+    } else {
+      triggerToast(`Bem-vindo(a), ${user.name}!`);
+    }
+  };
+
+  // Handlers de dados
   const handleToggleFavorite = async (petId: string) => {
     const newFav = await dbService.toggleFavorite(petId);
     setPets((prev) =>
@@ -239,6 +265,7 @@ export default function App() {
   };
 
   const favoritesCount = pets.filter((p) => p.favorite).length;
+  const isAdmin = currentUser?.role === 'admin';
 
   return (
     <div className="min-h-screen flex flex-col bg-[#f7f9fb] text-[#191c1e] antialiased">
@@ -252,6 +279,8 @@ export default function App() {
         }}
         onOpenAuth={(mode) => setAuthModalMode(mode)}
         favoritesCount={favoritesCount}
+        currentUser={currentUser}
+        onLogout={handleLogout}
       />
 
       {/* Toast Notification */}
@@ -301,20 +330,56 @@ export default function App() {
               />
             )}
 
+            {/* CONTROLE DE ACESSO DO PAINEL ONG / ADMINISTRATIVO */}
             {activeTab === 'painel-ong' && (
-              <OngDashboardView
-                pets={pets}
-                solicitations={solicitations}
-                fosterRequests={fosterRequests}
-                onAddPet={handleAddPet}
-                onDeletePet={handleDeletePet}
-                onUpdatePetStatus={handleUpdatePetStatus}
-                onApproveSolicitation={handleApproveSolicitation}
-                onRejectSolicitation={handleRejectSolicitation}
-                onAcceptFoster={handleAcceptFoster}
-                onOpenFosterDetails={(foster) => setActiveFosterDetails(foster)}
-                onOpenSolicitationProfile={(sol) => setActiveSolicitationProfile(sol)}
-              />
+              isAdmin ? (
+                <OngDashboardView
+                  pets={pets}
+                  solicitations={solicitations}
+                  fosterRequests={fosterRequests}
+                  onAddPet={handleAddPet}
+                  onDeletePet={handleDeletePet}
+                  onUpdatePetStatus={handleUpdatePetStatus}
+                  onApproveSolicitation={handleApproveSolicitation}
+                  onRejectSolicitation={handleRejectSolicitation}
+                  onAcceptFoster={handleAcceptFoster}
+                  onOpenFosterDetails={(foster) => setActiveFosterDetails(foster)}
+                  onOpenSolicitationProfile={(sol) => setActiveSolicitationProfile(sol)}
+                />
+              ) : (
+                <div className="max-w-4xl mx-auto px-4 py-16 text-center my-auto">
+                  <div className="bg-white rounded-3xl p-8 md:p-12 shadow-sm border border-[#e0e3e5] max-w-lg mx-auto">
+                    <div className="w-20 h-20 bg-[#ffdad6] text-[#ba1a1a] rounded-2xl flex items-center justify-center mx-auto mb-5">
+                      <span className="material-symbols-outlined text-4xl">lock</span>
+                    </div>
+                    <span className="bg-[#ffdad6] text-[#93000a] text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">
+                      Acesso Restrito
+                    </span>
+                    <h2 className="font-['Plus_Jakarta_Sans'] text-2xl md:text-3xl font-bold text-[#074469] mt-4 mb-2">
+                      Painel Administrativo da ONG
+                    </h2>
+                    <p className="font-['Be_Vietnam_Pro'] text-sm text-[#41474e] mb-6 leading-relaxed">
+                      Esta área é de acesso exclusivo para o perfil de administrador (<strong>admin@gmail.com</strong>). Contas de usuários comuns e visitantes não têm permissão para acessar esta seção.
+                    </p>
+
+                    <div className="flex flex-col sm:flex-row gap-3 justify-center font-['Be_Vietnam_Pro'] text-sm">
+                      <button
+                        onClick={() => setActiveTab('adotar')}
+                        className="bg-[#f2f4f6] hover:bg-[#e0e3e5] text-[#191c1e] font-semibold px-5 py-2.5 rounded-xl transition-colors cursor-pointer"
+                      >
+                        Voltar para Adoção
+                      </button>
+                      <button
+                        onClick={() => setAuthModalMode('login')}
+                        className="bg-[#074469] hover:bg-[#2a5c82] text-white font-bold px-5 py-2.5 rounded-xl transition-colors shadow-sm cursor-pointer flex items-center justify-center gap-2"
+                      >
+                        <span className="material-symbols-outlined text-base">login</span>
+                        Entrar como Administrador
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )
             )}
 
             {activeTab === 'sobre-nos' && (
@@ -354,6 +419,7 @@ export default function App() {
         <AuthModal
           mode={authModalMode}
           onClose={() => setAuthModalMode(null)}
+          onSuccess={handleAuthSuccess}
         />
       )}
 

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Pet, ONG, Solicitation, FosterRequest } from '../types';
+import { Pet, ONG, Solicitation, FosterRequest, User } from '../types';
+import { authService, ADMIN_CREDENTIALS } from '../services/authService';
 
 /* 1. Manifestar Interesse / Agendar Visita Modal */
 interface AdoptionInterestModalProps {
@@ -346,77 +347,174 @@ export const IndicarOngModal: React.FC<IndicarOngModalProps> = ({ onClose, onSub
   );
 };
 
-/* 3. Auth Modal (Entrar / Cadastrar) */
+/* 3. Auth Modal (Entrar / Cadastrar com dois níveis de acesso: Admin e Usuário) */
 interface AuthModalProps {
   mode: 'login' | 'register';
   onClose: () => void;
+  onSuccess?: (user: User) => void;
 }
 
-export const AuthModal: React.FC<AuthModalProps> = ({ mode: initialMode, onClose }) => {
+export const AuthModal: React.FC<AuthModalProps> = ({ mode: initialMode, onClose, onSuccess }) => {
   const [mode, setMode] = useState<'login' | 'register'>(initialMode);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
-  const [success, setSuccess] = useState(false);
+  const [phone, setPhone] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [authenticatedUser, setAuthenticatedUser] = useState<User | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setSuccess(true);
-    setTimeout(() => {
-      onClose();
-    }, 1400);
+  const fillAdminCredentials = () => {
+    setEmail(ADMIN_CREDENTIALS.email);
+    setPassword(ADMIN_CREDENTIALS.plainPassword);
+    setErrorMessage(null);
   };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMessage(null);
+    setLoading(true);
+
+    try {
+      if (mode === 'login') {
+        const result = await authService.login(email, password);
+        if (!result.success || !result.user) {
+          setErrorMessage(result.error || 'Credenciais inválidas.');
+          setLoading(false);
+          return;
+        }
+        setAuthenticatedUser(result.user);
+        if (onSuccess) onSuccess(result.user);
+        setTimeout(() => {
+          onClose();
+        }, 1400);
+      } else {
+        const result = await authService.register(name, email, password, phone);
+        if (!result.success || !result.user) {
+          setErrorMessage(result.error || 'Não foi possível cadastrar a conta.');
+          setLoading(false);
+          return;
+        }
+        setAuthenticatedUser(result.user);
+        if (onSuccess) onSuccess(result.user);
+        setTimeout(() => {
+          onClose();
+        }, 1400);
+      }
+    } catch (err: any) {
+      setErrorMessage(err?.message || 'Ocorreu um erro ao processar a autenticação.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const isAdmin = authenticatedUser?.role === 'admin';
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl max-w-md w-full p-6 md:p-8 shadow-2xl border border-[#e0e3e5] relative animate-in fade-in zoom-in duration-200">
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-[#72787f] hover:text-[#191c1e] p-1.5 rounded-full hover:bg-[#e0e3e5]"
+          className="absolute top-4 right-4 text-[#72787f] hover:text-[#191c1e] p-1.5 rounded-full hover:bg-[#e0e3e5] cursor-pointer"
         >
           <span className="material-symbols-outlined">close</span>
         </button>
 
-        {success ? (
-          <div className="text-center py-8">
-            <div className="w-16 h-16 bg-[#a0efd6] text-[#196f5b] rounded-full flex items-center justify-center mx-auto mb-4">
-              <span className="material-symbols-outlined text-3xl">check</span>
+        {authenticatedUser ? (
+          <div className="text-center py-6">
+            <div
+              className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
+                isAdmin ? 'bg-[#074469] text-[#a0efd6]' : 'bg-[#a0efd6] text-[#196f5b]'
+              }`}
+            >
+              <span className="material-symbols-outlined text-3xl">
+                {isAdmin ? 'admin_panel_settings' : 'check'}
+              </span>
             </div>
             <h3 className="font-['Plus_Jakarta_Sans'] text-2xl font-bold text-[#074469] mb-1">
-              {mode === 'login' ? 'Bem-vindo de volta!' : 'Conta criada com sucesso!'}
+              {isAdmin ? 'Acesso Administrador' : 'Bem-vindo(a)!'}
             </h3>
-            <p className="font-['Be_Vietnam_Pro'] text-sm text-[#41474e]">
-              Acesso liberado a todas as funcionalidades do CorrenteCão.
+            <p className="font-['Be_Vietnam_Pro'] text-sm text-[#41474e] mb-3">
+              Olá, <strong>{authenticatedUser.name}</strong> ({authenticatedUser.email}).
             </p>
+            <span
+              className={`inline-block text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full ${
+                isAdmin ? 'bg-[#074469] text-[#a0efd6]' : 'bg-[#e0e3e5] text-[#191c1e]'
+              }`}
+            >
+              {isAdmin ? 'Painel Administrativo Desbloqueado' : 'Perfil de Usuário Padrão'}
+            </span>
           </div>
         ) : (
           <div>
-            <h3 className="font-['Plus_Jakarta_Sans'] text-2xl font-bold text-[#074469] mb-1">
-              {mode === 'login' ? 'Acessar CorrenteCão' : 'Criar Conta no CorrenteCão'}
-            </h3>
-            <p className="font-['Be_Vietnam_Pro'] text-xs text-[#72787f] mb-6">
+            {/* Header Tabs */}
+            <div className="flex border-b border-[#e0e3e5] mb-6">
+              <button
+                type="button"
+                onClick={() => {
+                  setMode('login');
+                  setErrorMessage(null);
+                }}
+                className={`flex-1 pb-3 text-center font-['Plus_Jakarta_Sans'] font-bold text-base border-b-2 transition-all cursor-pointer ${
+                  mode === 'login'
+                    ? 'border-[#074469] text-[#074469]'
+                    : 'border-transparent text-[#72787f] hover:text-[#191c1e]'
+                }`}
+              >
+                Entrar
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMode('register');
+                  setErrorMessage(null);
+                }}
+                className={`flex-1 pb-3 text-center font-['Plus_Jakarta_Sans'] font-bold text-base border-b-2 transition-all cursor-pointer ${
+                  mode === 'register'
+                    ? 'border-[#074469] text-[#074469]'
+                    : 'border-transparent text-[#72787f] hover:text-[#191c1e]'
+                }`}
+              >
+                Cadastrar
+              </button>
+            </div>
+
+            <p className="font-['Be_Vietnam_Pro'] text-xs text-[#72787f] mb-4">
               {mode === 'login'
-                ? 'Entre para acompanhar suas adoções e favoritos'
-                : 'Cadastre-se como adotante ou voluntário'}
+                ? 'Insira suas credenciais para acessar sua conta ou o painel administrativo.'
+                : 'Cadastre-se como adotante para agendar visitas e salvar seus pets favoritos.'}
             </p>
 
-            <form onSubmit={handleSubmit} className="space-y-4 font-['Be_Vietnam_Pro'] text-sm">
+            {/* Error banner */}
+            {errorMessage && (
+              <div className="mb-4 bg-[#ffdad6] text-[#ba1a1a] p-3 rounded-xl text-xs font-['Be_Vietnam_Pro'] flex items-center gap-2 animate-in fade-in">
+                <span className="material-symbols-outlined text-sm">error</span>
+                <span>{errorMessage}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-3.5 font-['Be_Vietnam_Pro'] text-sm">
               {mode === 'register' && (
                 <div>
-                  <label className="block text-xs font-semibold text-[#41474e] mb-1">Nome</label>
+                  <label className="block text-xs font-semibold text-[#41474e] mb-1">
+                    Nome Completo *
+                  </label>
                   <input
                     type="text"
                     required
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    placeholder="Seu nome"
+                    placeholder="Ex: João da Silva"
                     className="w-full bg-[#f2f4f6] border border-[#c1c7cf] rounded-lg p-2.5 outline-none focus:border-[#074469] focus:bg-white"
                   />
                 </div>
               )}
 
               <div>
-                <label className="block text-xs font-semibold text-[#41474e] mb-1">E-mail</label>
+                <label className="block text-xs font-semibold text-[#41474e] mb-1">
+                  E-mail *
+                </label>
                 <input
                   type="email"
                   required
@@ -427,49 +525,78 @@ export const AuthModal: React.FC<AuthModalProps> = ({ mode: initialMode, onClose
                 />
               </div>
 
+              {mode === 'register' && (
+                <div>
+                  <label className="block text-xs font-semibold text-[#41474e] mb-1">
+                    Telefone / WhatsApp (Opcional)
+                  </label>
+                  <input
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="(11) 98765-4321"
+                    className="w-full bg-[#f2f4f6] border border-[#c1c7cf] rounded-lg p-2.5 outline-none focus:border-[#074469] focus:bg-white"
+                  />
+                </div>
+              )}
+
               <div>
-                <label className="block text-xs font-semibold text-[#41474e] mb-1">Senha</label>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="block text-xs font-semibold text-[#41474e]">
+                    Senha *
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="text-[11px] text-[#074469] hover:underline cursor-pointer"
+                  >
+                    {showPassword ? 'Ocultar' : 'Mostrar'}
+                  </button>
+                </div>
                 <input
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full bg-[#f2f4f6] border border-[#c1c7cf] rounded-lg p-2.5 outline-none focus:border-[#074469] focus:bg-white"
+                  className="w-full bg-[#f2f4f6] border border-[#c1c7cf] rounded-lg p-2.5 outline-none focus:border-[#074469] focus:bg-white font-mono text-sm"
                 />
               </div>
 
-              <button
-                type="submit"
-                className="w-full bg-[#074469] hover:bg-[#2a5c82] text-white font-bold py-3 rounded-xl transition-all shadow-sm cursor-pointer"
-              >
-                {mode === 'login' ? 'Entrar' : 'Cadastrar'}
-              </button>
-            </form>
-
-            <div className="mt-6 text-center text-xs font-['Be_Vietnam_Pro'] text-[#72787f]">
-              {mode === 'login' ? (
-                <p>
-                  Não tem uma conta?{' '}
+              {/* Botão de atalho rápido para credenciais de administrador */}
+              {mode === 'login' && (
+                <div className="pt-1">
                   <button
-                    onClick={() => setMode('register')}
-                    className="text-[#074469] font-bold hover:underline"
+                    type="button"
+                    onClick={fillAdminCredentials}
+                    className="w-full text-left text-[11px] text-[#074469] bg-[#074469]/5 hover:bg-[#074469]/10 p-2 rounded-lg border border-[#074469]/20 flex items-center justify-between cursor-pointer transition-colors"
                   >
-                    Cadastre-se grátis
+                    <span className="flex items-center gap-1">
+                      <span className="material-symbols-outlined text-xs">admin_panel_settings</span>
+                      Preencher credenciais do <strong>Administrador</strong>
+                    </span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#074469]">Auto-fill</span>
                   </button>
-                </p>
-              ) : (
-                <p>
-                  Já possui conta?{' '}
-                  <button
-                    onClick={() => setMode('login')}
-                    className="text-[#074469] font-bold hover:underline"
-                  >
-                    Fazer Login
-                  </button>
-                </p>
+                </div>
               )}
-            </div>
+
+              <div className="pt-2">
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full bg-[#074469] hover:bg-[#2a5c82] disabled:opacity-60 text-white font-bold py-3 rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  {loading ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>Validando acesso...</span>
+                    </>
+                  ) : (
+                    <span>{mode === 'login' ? 'Entrar no Sistema' : 'Criar Conta de Usuário'}</span>
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
         )}
       </div>

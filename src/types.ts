@@ -3,6 +3,17 @@ export type Size = 'Pequeno' | 'Médio' | 'Grande' | 'Médio/Grande';
 export type Gender = 'Macho' | 'Fêmea';
 export type AgeGroup = 'Filhote' | 'Adulto' | 'Idoso';
 
+export type UserRole = 'admin' | 'user';
+
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  phone?: string;
+  createdAt?: string;
+}
+
 export interface Pet {
   id: string;
   name: string;

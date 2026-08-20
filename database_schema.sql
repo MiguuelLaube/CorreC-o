@@ -23,6 +23,9 @@ DO $$ BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'solicitacao_status_enum') THEN
         CREATE TYPE solicitacao_status_enum AS ENUM ('pendente', 'aprovada', 'recusada');
     END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_role_enum') THEN
+        CREATE TYPE user_role_enum AS ENUM ('user', 'admin');
+    END IF;
 END $$;
 
 -- 2. TABELA DE ONGS / PROTETORES
@@ -38,15 +41,26 @@ CREATE TABLE IF NOT EXISTS public.ongs (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- 3. TABELA DE USUÁRIOS / ADOTANTES
+-- 3. TABELA DE USUÁRIOS / ADOTANTES / ADMINISTRADORES
 CREATE TABLE IF NOT EXISTS public.usuarios (
     id SERIAL PRIMARY KEY,
     nome VARCHAR(255) NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
     telefone VARCHAR(20),
     senha_hash VARCHAR(255) NOT NULL,
+    role VARCHAR(20) DEFAULT 'user' CHECK (role IN ('user', 'admin')),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Adiciona a coluna role caso a tabela usuarios já exista
+DO $$ BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_schema = 'public' AND table_name = 'usuarios' AND column_name = 'role'
+    ) THEN
+        ALTER TABLE public.usuarios ADD COLUMN role VARCHAR(20) DEFAULT 'user' CHECK (role IN ('user', 'admin'));
+    END IF;
+END $$;
 
 -- 4. TABELA DE PETS
 CREATE TABLE IF NOT EXISTS public.pets (
@@ -92,6 +106,25 @@ CREATE TABLE IF NOT EXISTS public.parceiros (
 );
 
 -- ==============================================================================
+-- INSERÇÃO / ATUALIZAÇÃO DA CONTA DE ADMINISTRADOR OBRIGATÓRIA (COM SENHA CRIPTOGRAFADA SHA-256)
+-- Email: admin@gmail.com
+-- Senha plana: hiqufxAqTYouTeJmYqFYPHFELoUEXwtc
+-- ==============================================================================
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+INSERT INTO public.usuarios (nome, email, senha_hash, role)
+VALUES (
+    'Administrador CorrenteCão',
+    'admin@gmail.com',
+    encode(digest('hiqufxAqTYouTeJmYqFYPHFELoUEXwtc', 'sha256'), 'hex'),
+    'admin'
+)
+ON CONFLICT (email) DO UPDATE SET
+    nome = 'Administrador CorrenteCão',
+    senha_hash = encode(digest('hiqufxAqTYouTeJmYqFYPHFELoUEXwtc', 'sha256'), 'hex'),
+    role = 'admin';
+
+-- ==============================================================================
 -- ÍNDICES PARA PERFORMANCE EM CONSULTAS E FILTROS DE VITRINE / API
 -- ==============================================================================
 CREATE INDEX IF NOT EXISTS idx_pets_filtros ON public.pets(especie, porte, genero, idade_aproximada, status);
@@ -100,6 +133,8 @@ CREATE INDEX IF NOT EXISTS idx_solicitacoes_ong ON public.solicitacoes(ong_id);
 CREATE INDEX IF NOT EXISTS idx_solicitacoes_usuario ON public.solicitacoes(usuario_id);
 CREATE INDEX IF NOT EXISTS idx_solicitacoes_status ON public.solicitacoes(status);
 CREATE INDEX IF NOT EXISTS idx_parceiros_ativo ON public.parceiros(ativo);
+CREATE INDEX IF NOT EXISTS idx_usuarios_email ON public.usuarios(email);
+CREATE INDEX IF NOT EXISTS idx_usuarios_role ON public.usuarios(role);
 
 -- ==============================================================================
 -- ROW LEVEL SECURITY (RLS) & POLICIES (SUPABASE)

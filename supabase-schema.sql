@@ -3,7 +3,28 @@
 -- Executável múltiplas vezes sem conflitos (Idempotente)
 -- ==============================================================================
 
--- 1. TABELA DE ONGS
+-- 1. TABELA DE USUÁRIOS / AUTENTICAÇÃO COM NÍVEIS DE PERMISSÃO (ADMIN / USER)
+CREATE TABLE IF NOT EXISTS public.usuarios (
+    id SERIAL PRIMARY KEY,
+    nome VARCHAR(255) NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    telefone VARCHAR(20),
+    senha_hash VARCHAR(255) NOT NULL,
+    role VARCHAR(20) DEFAULT 'user' CHECK (role IN ('user', 'admin')),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Garantir existência da coluna role caso a tabela já existisse
+DO $$ BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_schema = 'public' AND table_name = 'usuarios' AND column_name = 'role'
+    ) THEN
+        ALTER TABLE public.usuarios ADD COLUMN role VARCHAR(20) DEFAULT 'user' CHECK (role IN ('user', 'admin'));
+    END IF;
+END $$;
+
+-- 2. TABELA DE ONGS
 CREATE TABLE IF NOT EXISTS public.ongs (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
@@ -17,7 +38,7 @@ CREATE TABLE IF NOT EXISTS public.ongs (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- 2. TABELA DE PETS (ANIMAIS PARA ADOÇÃO)
+-- 3. TABELA DE PETS (ANIMAIS PARA ADOÇÃO)
 CREATE TABLE IF NOT EXISTS public.pets (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
@@ -46,7 +67,7 @@ CREATE TABLE IF NOT EXISTS public.pets (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- 3. TABELA DE SOLICITAÇÕES (VISITAS E ADOÇÕES)
+-- 4. TABELA DE SOLICITAÇÕES (VISITAS E ADOÇÕES)
 CREATE TABLE IF NOT EXISTS public.solicitations (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     type TEXT NOT NULL CHECK (type IN ('Visita', 'Adoção')),
@@ -60,7 +81,7 @@ CREATE TABLE IF NOT EXISTS public.solicitations (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- 4. TABELA DE PEDIDOS DE ACOLHIMENTO (FOSTER REQUESTS)
+-- 5. TABELA DE PEDIDOS DE ACOLHIMENTO (FOSTER REQUESTS)
 CREATE TABLE IF NOT EXISTS public.foster_requests (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     pet_name TEXT NOT NULL,
@@ -74,7 +95,7 @@ CREATE TABLE IF NOT EXISTS public.foster_requests (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- 5. TABELA DE PARCEIROS (PARTNERS)
+-- 6. TABELA DE PARCEIROS (PARTNERS)
 CREATE TABLE IF NOT EXISTS public.partners (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
@@ -88,37 +109,46 @@ CREATE TABLE IF NOT EXISTS public.partners (
 );
 
 -- ==============================================================================
+-- CONTA DE ADMINISTRADOR OBRIGATÓRIA (HASH SHA-256)
+-- Email: admin@gmail.com
+-- Senha plana: hiqufxAqTYouTeJmYqFYPHFELoUEXwtc
+-- ==============================================================================
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+INSERT INTO public.usuarios (nome, email, senha_hash, role)
+VALUES (
+    'Administrador CorrenteCão',
+    'admin@gmail.com',
+    encode(digest('hiqufxAqTYouTeJmYqFYPHFELoUEXwtc', 'sha256'), 'hex'),
+    'admin'
+)
+ON CONFLICT (email) DO UPDATE SET
+    nome = 'Administrador CorrenteCão',
+    senha_hash = encode(digest('hiqufxAqTYouTeJmYqFYPHFELoUEXwtc', 'sha256'), 'hex'),
+    role = 'admin';
+
+-- ==============================================================================
 -- CONFIGURAÇÃO DE SEGURANÇA (ROW LEVEL SECURITY - RLS)
 -- ==============================================================================
-
+ALTER TABLE public.usuarios ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.ongs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.pets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.solicitations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.foster_requests ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.partners ENABLE ROW LEVEL SECURITY;
 
--- Limpar policies antigas se existirem para evitar o erro 42710
-DROP POLICY IF EXISTS "Leitura pública de ONGs" ON public.ongs;
+-- Limpar policies antigas se existirem
+DROP POLICY IF EXISTS "Gerenciamento de Usuários" ON public.usuarios;
 DROP POLICY IF EXISTS "Gerenciamento de ONGs" ON public.ongs;
-
-DROP POLICY IF EXISTS "Leitura pública de Pets" ON public.pets;
 DROP POLICY IF EXISTS "Gerenciamento de Pets" ON public.pets;
-
-DROP POLICY IF EXISTS "Leitura pública de Parceiros" ON public.partners;
-
-DROP POLICY IF EXISTS "Criação pública de Solicitações" ON public.solicitations;
-DROP POLICY IF EXISTS "Leitura de Solicitações" ON public.solicitations;
-DROP POLICY IF EXISTS "Atualização de Solicitações" ON public.solicitations;
+DROP POLICY IF EXISTS "Gerenciamento de Parceiros" ON public.partners;
 DROP POLICY IF EXISTS "Gerenciamento de Solicitações" ON public.solicitations;
-
-DROP POLICY IF EXISTS "Criação pública de Acolhimentos" ON public.foster_requests;
-DROP POLICY IF EXISTS "Leitura de Acolhimentos" ON public.foster_requests;
-DROP POLICY IF EXISTS "Atualização de Acolhimentos" ON public.foster_requests;
 DROP POLICY IF EXISTS "Gerenciamento de Acolhimentos" ON public.foster_requests;
 
--- Criar políticas com acesso completo para a aplicação
+-- Criar políticas de acesso completo
+CREATE POLICY "Gerenciamento de Usuários" ON public.usuarios FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Gerenciamento de ONGs" ON public.ongs FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Gerenciamento de Pets" ON public.pets FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Gerenciamento de Parceiros" ON public.partners FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Gerenciamento de Solicitações" ON public.solicitations FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Gerenciamento de Solicitações" ON public.solicitacoes FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Gerenciamento de Acolhimentos" ON public.foster_requests FOR ALL USING (true) WITH CHECK (true);
