@@ -1,5 +1,5 @@
-import { Pet, ONG, Solicitation, FosterRequest } from '../types';
-import { INITIAL_PETS, INITIAL_ONGS, INITIAL_SOLICITATIONS, INITIAL_FOSTER_REQUESTS } from '../data/initialData';
+import { Pet, ONG, Solicitation, FosterRequest, Partner } from '../types';
+import { INITIAL_PETS, INITIAL_ONGS, INITIAL_SOLICITATIONS, INITIAL_FOSTER_REQUESTS, PARTNERS_LIST } from '../data/initialData';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
 const STORAGE_KEYS = {
@@ -7,11 +7,12 @@ const STORAGE_KEYS = {
   ONGS: 'correntecao_ongs',
   SOLICITATIONS: 'correntecao_solicitations',
   FOSTER_REQUESTS: 'correntecao_foster_requests',
+  PARTNERS: 'correntecao_partners',
   INITIALIZED: 'correntecao_initialized_v1'
 };
 
 // ==========================================
-// Helpers de Local Storage (Persistência Offline/Navegador)
+// Helpers de Local Storage (Persistência Offline/Cache)
 // ==========================================
 function getLocal<T>(key: string, defaultValue: T): T {
   try {
@@ -37,6 +38,7 @@ function ensureLocalInitialized(): void {
     setLocal(STORAGE_KEYS.ONGS, INITIAL_ONGS);
     setLocal(STORAGE_KEYS.SOLICITATIONS, INITIAL_SOLICITATIONS);
     setLocal(STORAGE_KEYS.FOSTER_REQUESTS, INITIAL_FOSTER_REQUESTS);
+    setLocal(STORAGE_KEYS.PARTNERS, PARTNERS_LIST);
     localStorage.setItem(STORAGE_KEYS.INITIALIZED, 'true');
   }
 }
@@ -51,29 +53,29 @@ if (typeof window !== 'undefined') {
 // ==========================================
 function mapPetFromSupabase(row: any): Pet {
   return {
-    id: row.id,
-    name: row.name,
-    species: row.species,
-    breed: row.breed,
-    city: row.city,
-    state: row.state,
-    age: row.age,
-    ageGroup: row.age_group,
-    gender: row.gender,
-    size: row.size,
-    color: row.color,
-    vaccination: row.vaccination || 'Em dia',
-    castrated: Boolean(row.castrated),
-    dewormed: Boolean(row.dewormed),
-    specialNeeds: Boolean(row.special_needs),
-    temperament: row.temperament || [],
-    mainImage: row.main_image,
-    galleryImages: row.gallery_images || [],
-    story: row.story || [],
-    ongId: row.ong_id || 'amigos-de-patas',
+    id: String(row.id),
+    name: row.name || row.nome || '',
+    species: (row.species || (row.especie === 'cao' ? 'Cachorro' : row.especie === 'gato' ? 'Gato' : 'Cachorro')) as any,
+    breed: row.breed || 'SRD (Sem Raça Definida)',
+    city: row.city || 'São Paulo',
+    state: row.state || 'SP',
+    age: row.age || (row.idade_aproximada ? `${row.idade_aproximada}` : '2 anos'),
+    ageGroup: (row.age_group || (row.idade_aproximada === 'filhote' ? 'Filhote' : row.idade_aproximada === 'idoso' ? 'Idoso' : 'Adulto')) as any,
+    gender: (row.gender || (row.genero === 'macho' ? 'Macho' : 'Fêmea')) as any,
+    size: (row.size || (row.porte === 'pequeno' ? 'Pequeno' : row.porte === 'grande' ? 'Grande' : 'Médio')) as any,
+    color: row.color || row.cor || 'Caramelo',
+    vaccination: row.vaccination || (row.vacinado ? 'Completa' : 'Pendente'),
+    castrated: Boolean(row.castrated ?? row.castrado),
+    dewormed: Boolean(row.dewormed ?? true),
+    specialNeeds: Boolean(row.special_needs ?? false),
+    temperament: row.temperament || ['Dócil', 'Sociável'],
+    mainImage: row.main_image || (row.fotos && row.fotos[0]) || 'https://images.unsplash.com/photo-1543466835-00a7907e9de1',
+    galleryImages: row.gallery_images || (row.fotos ? row.fotos.slice(1) : []),
+    story: row.story || (row.descricao ? [row.descricao] : []),
+    ongId: String(row.ong_id || 'amigos-de-patas'),
     ongName: row.ong_name || 'ONG Parceira',
     entryDate: row.entry_date || new Date().toLocaleDateString('pt-BR'),
-    status: row.status || 'Disponível',
+    status: (row.status === 'disponivel' ? 'Disponível' : row.status === 'em_processo' ? 'Em Processo' : row.status === 'adotado' ? 'Adotado' : (row.status || 'Disponível')) as any,
     favorite: Boolean(row.favorite)
   };
 }
@@ -109,12 +111,12 @@ function mapPetToSupabase(pet: Pet): any {
 
 function mapOngFromSupabase(row: any): ONG {
   return {
-    id: row.id,
-    name: row.name,
-    city: row.city,
-    state: row.state,
-    phone: row.phone,
-    image: row.image,
+    id: String(row.id),
+    name: row.name || row.nome_fantasia || row.razao_social || 'ONG Parceira',
+    city: row.city || (row.endereco ? row.endereco.split(',')[0] : 'São Paulo'),
+    state: row.state || 'SP',
+    phone: row.phone || row.telefone_whatsapp || '(11) 98765-4321',
+    image: row.image || 'https://images.unsplash.com/photo-1548199973-03cce0bbc87b',
     description: row.description || '',
     petsCount: row.pets_count || 0,
     featured: Boolean(row.featured)
@@ -137,13 +139,13 @@ function mapOngToSupabase(ong: ONG): any {
 
 function mapSolicitationFromSupabase(row: any): Solicitation {
   return {
-    id: row.id,
-    type: row.type,
-    petId: row.pet_id,
-    petName: row.pet_name,
-    requesterName: row.requester_name,
-    dateOrDetails: row.date_or_details,
-    status: row.status,
+    id: String(row.id),
+    type: (row.type === 'adocao' ? 'Adoção' : row.type === 'acolhimento' ? 'Visita' : (row.type || 'Visita')) as any,
+    petId: String(row.pet_id || ''),
+    petName: row.pet_name || 'Pet Cadastrado',
+    requesterName: row.requester_name || 'Solicitante',
+    dateOrDetails: row.date_or_details || row.mensagem || '',
+    status: (row.status === 'aprovada' ? 'approved' : row.status === 'recusada' ? 'rejected' : (row.status || 'pending')) as any,
     phone: row.phone || '',
     email: row.email || ''
   };
@@ -165,13 +167,13 @@ function mapSolicitationToSupabase(sol: Solicitation): any {
 
 function mapFosterFromSupabase(row: any): FosterRequest {
   return {
-    id: row.id,
-    petName: row.pet_name,
-    species: row.species,
-    reason: row.reason,
-    timestamp: row.timestamp || new Date().toLocaleTimeString('pt-BR'),
-    status: row.status,
-    photoUrl: row.photo_url,
+    id: String(row.id),
+    petName: row.pet_name || '',
+    species: row.species || (row.dados_animal_proprio?.especie) || 'Cachorro',
+    reason: row.reason || row.mensagem || '',
+    timestamp: row.timestamp || (row.created_at ? new Date(row.created_at).toLocaleTimeString('pt-BR') : new Date().toLocaleTimeString('pt-BR')),
+    status: (row.status === 'aprovada' ? 'accepted' : row.status === 'recusada' ? 'declined' : (row.status || 'pending')) as any,
+    photoUrl: row.photo_url || row.dados_animal_proprio?.foto,
     requesterName: row.requester_name,
     phone: row.phone
   };
@@ -188,6 +190,32 @@ function mapFosterToSupabase(foster: FosterRequest): any {
     photo_url: foster.photoUrl,
     requester_name: foster.requesterName,
     phone: foster.phone
+  };
+}
+
+function mapPartnerFromSupabase(row: any): Partner {
+  return {
+    id: String(row.id),
+    name: row.name || row.nome,
+    category: row.category || row.tipo || 'Parceiro',
+    tagline: row.tagline || row.tipo || '',
+    image: row.image || row.logo_url || 'https://images.unsplash.com/photo-1583511655857-d19b40a7a54e',
+    url: row.url || row.link_contato || '#',
+    badge: row.badge,
+    discountOrBenefit: row.discount_or_benefit
+  };
+}
+
+function mapPartnerToSupabase(p: Partner): any {
+  return {
+    id: p.id,
+    name: p.name,
+    category: p.category,
+    tagline: p.tagline,
+    image: p.image,
+    url: p.url,
+    badge: p.badge,
+    discount_or_benefit: p.discountOrBenefit
   };
 }
 
@@ -212,7 +240,7 @@ export const dbService = {
           return mapped;
         }
 
-        // Se o Supabase estiver conectado mas sem dados ainda, faz o seed inicial
+        // Se a tabela estiver vazia, faz o seed inicial
         if (!error && data && data.length === 0) {
           const seeds = INITIAL_PETS.map(mapPetToSupabase);
           await supabase.from('pets').insert(seeds);
@@ -227,7 +255,6 @@ export const dbService = {
   },
 
   async savePet(pet: Pet): Promise<Pet> {
-    // 1. Sempre atualiza localmente para nunca perder os dados
     const currentPets = getLocal<Pet[]>(STORAGE_KEYS.PETS, INITIAL_PETS);
     const existingIndex = currentPets.findIndex((p) => p.id === pet.id);
     let updatedPets: Pet[];
@@ -240,16 +267,11 @@ export const dbService = {
     }
     setLocal(STORAGE_KEYS.PETS, updatedPets);
 
-    // 2. Se configurado, envia diretamente para o Supabase
     if (isSupabaseConfigured) {
       try {
         const payload = mapPetToSupabase(pet);
         const { error } = await supabase.from('pets').upsert(payload);
-        if (error) {
-          console.error('Erro ao salvar pet no Supabase:', error);
-        } else {
-          console.log('Pet gravado no Supabase com sucesso:', pet.name);
-        }
+        if (error) console.error('Erro ao salvar pet no Supabase:', error);
       } catch (err) {
         console.error('Falha de conexão com Supabase ao salvar pet:', err);
       }
@@ -319,11 +341,14 @@ export const dbService = {
       try {
         const { data, error } = await supabase.from('ongs').select('*').order('name');
         if (!error && data && data.length > 0) {
-          return data.map(mapOngFromSupabase);
+          const mapped = data.map(mapOngFromSupabase);
+          setLocal(STORAGE_KEYS.ONGS, mapped);
+          return mapped;
         }
         if (!error && data && data.length === 0) {
           const seeds = INITIAL_ONGS.map(mapOngToSupabase);
           await supabase.from('ongs').insert(seeds);
+          setLocal(STORAGE_KEYS.ONGS, INITIAL_ONGS);
           return INITIAL_ONGS;
         }
       } catch (err) {
@@ -370,11 +395,14 @@ export const dbService = {
           .order('created_at', { ascending: false });
 
         if (!error && data && data.length > 0) {
-          return data.map(mapSolicitationFromSupabase);
+          const mapped = data.map(mapSolicitationFromSupabase);
+          setLocal(STORAGE_KEYS.SOLICITATIONS, mapped);
+          return mapped;
         }
         if (!error && data && data.length === 0) {
           const seeds = INITIAL_SOLICITATIONS.map(mapSolicitationToSupabase);
           await supabase.from('solicitations').insert(seeds);
+          setLocal(STORAGE_KEYS.SOLICITATIONS, INITIAL_SOLICITATIONS);
           return INITIAL_SOLICITATIONS;
         }
       } catch (err) {
@@ -427,11 +455,14 @@ export const dbService = {
           .order('created_at', { ascending: false });
 
         if (!error && data && data.length > 0) {
-          return data.map(mapFosterFromSupabase);
+          const mapped = data.map(mapFosterFromSupabase);
+          setLocal(STORAGE_KEYS.FOSTER_REQUESTS, mapped);
+          return mapped;
         }
         if (!error && data && data.length === 0) {
           const seeds = INITIAL_FOSTER_REQUESTS.map(mapFosterToSupabase);
           await supabase.from('foster_requests').insert(seeds);
+          setLocal(STORAGE_KEYS.FOSTER_REQUESTS, INITIAL_FOSTER_REQUESTS);
           return INITIAL_FOSTER_REQUESTS;
         }
       } catch (err) {
@@ -473,6 +504,35 @@ export const dbService = {
   },
 
   // ----------------------------------------
+  // PARCEIROS (PARTNERS)
+  // ----------------------------------------
+  async getPartners(): Promise<Partner[]> {
+    if (isSupabaseConfigured) {
+      try {
+        const { data, error } = await supabase
+          .from('partners')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (!error && data && data.length > 0) {
+          const mapped = data.map(mapPartnerFromSupabase);
+          setLocal(STORAGE_KEYS.PARTNERS, mapped);
+          return mapped;
+        }
+        if (!error && data && data.length === 0) {
+          const seeds = PARTNERS_LIST.map(mapPartnerToSupabase);
+          await supabase.from('partners').insert(seeds);
+          setLocal(STORAGE_KEYS.PARTNERS, PARTNERS_LIST);
+          return PARTNERS_LIST;
+        }
+      } catch (err) {
+        console.warn('Falha ao buscar parceiros no Supabase:', err);
+      }
+    }
+    return getLocal<Partner[]>(STORAGE_KEYS.PARTNERS, PARTNERS_LIST);
+  },
+
+  // ----------------------------------------
   // Reset / Restauração para testes
   // ----------------------------------------
   resetToDefaults(): void {
@@ -480,5 +540,6 @@ export const dbService = {
     setLocal(STORAGE_KEYS.ONGS, INITIAL_ONGS);
     setLocal(STORAGE_KEYS.SOLICITATIONS, INITIAL_SOLICITATIONS);
     setLocal(STORAGE_KEYS.FOSTER_REQUESTS, INITIAL_FOSTER_REQUESTS);
+    setLocal(STORAGE_KEYS.PARTNERS, PARTNERS_LIST);
   }
 };
