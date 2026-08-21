@@ -10,6 +10,7 @@ interface NavbarProps {
   currentOng: OngSession | null;
   onLogoutUser: () => void;
   onLogoutOng: () => void;
+  onToggleSidebar?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -20,7 +21,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   currentUser,
   currentOng,
   onLogoutUser,
-  onLogoutOng
+  onLogoutOng,
+  onToggleSidebar
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const isAdmin = currentOng?.role === 'admin';
@@ -32,10 +34,25 @@ export const Navbar: React.FC<NavbarProps> = ({
   };
 
   return (
-    <header className="fixed top-0 w-full z-50 shadow-xs bg-[#f7f9fb]/95 backdrop-blur-md border-b border-[#e0e3e5]/80 font-['Be_Vietnam_Pro']">
-      <div className="flex justify-between items-center px-4 md:px-16 h-20 max-w-7xl mx-auto">
-        {/* Brand: MatchPet */}
+    <header className="fixed top-0 w-full z-40 shadow-xs bg-[#f7f9fb]/95 backdrop-blur-md border-b border-[#e0e3e5]/80 font-['Be_Vietnam_Pro']">
+      <div className="flex justify-between items-center px-4 md:px-12 h-20 max-w-7xl mx-auto">
+        {/* Brand & Sidebar Toggle Button */}
         <div className="flex items-center gap-3">
+          {/* Botão de Alternar Sidebar Lateral Interativa */}
+          {onToggleSidebar && (
+            <button
+              onClick={onToggleSidebar}
+              className="p-2.5 rounded-2xl bg-white hover:bg-[#074469] text-[#074469] hover:text-white border border-[#e0e3e5] shadow-2xs transition-all cursor-pointer flex items-center justify-center group"
+              title="Abrir menu lateral interativo"
+              aria-label="Abrir Sidebar"
+            >
+              <span className="material-symbols-outlined text-2xl group-hover:rotate-12 transition-transform">
+                menu_open
+              </span>
+            </button>
+          )}
+
+          {/* Logo MatchPet */}
           <button
             onClick={() => handleNav('adotar')}
             className="text-left group flex items-center gap-2.5 cursor-pointer focus:outline-none"
@@ -76,7 +93,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             ONGs
           </button>
 
-          {/* Aba Minhas Adoções - Destaque na Navegação Principal */}
+          {/* Aba Minhas Adoções */}
           <button
             onClick={() => handleNav('minhas-adocoes')}
             className={`transition-colors duration-200 cursor-pointer font-medium pb-1 flex items-center gap-1.5 ${
@@ -230,18 +247,29 @@ export const Navbar: React.FC<NavbarProps> = ({
               {favoritesCount}
             </span>
           )}
-          <button
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="p-2 text-[#074469] hover:bg-[#e0e3e5] rounded-xl focus:outline-none"
-            aria-label="Menu"
-          >
-            <span className="material-symbols-outlined">{mobileMenuOpen ? 'close' : 'menu'}</span>
-          </button>
+
+          {onToggleSidebar ? (
+            <button
+              onClick={onToggleSidebar}
+              className="p-2 text-[#074469] hover:bg-[#e0e3e5] rounded-xl focus:outline-none cursor-pointer"
+              aria-label="Abrir Menu Lateral"
+            >
+              <span className="material-symbols-outlined text-2xl">menu</span>
+            </button>
+          ) : (
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="p-2 text-[#074469] hover:bg-[#e0e3e5] rounded-xl focus:outline-none"
+              aria-label="Menu"
+            >
+              <span className="material-symbols-outlined">{mobileMenuOpen ? 'close' : 'menu'}</span>
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Mobile Drawer */}
-      {mobileMenuOpen && (
+      {/* Mobile Drawer Fallback se Sidebar não estiver ativa */}
+      {!onToggleSidebar && mobileMenuOpen && (
         <div className="md:hidden bg-[#f7f9fb] border-b border-[#e0e3e5] px-6 py-4 space-y-2.5 shadow-lg animate-in slide-in-from-top duration-200">
           {currentUser && (
             <div className="flex items-center justify-between pb-3 border-b border-[#e0e3e5]">
@@ -303,8 +331,6 @@ export const Navbar: React.FC<NavbarProps> = ({
           >
             ONGs Parceiras
           </button>
-
-          {/* Minhas Adoções no Menu Mobile */}
           <button
             onClick={() => handleNav('minhas-adocoes')}
             className={`block w-full text-left py-2 px-3 rounded-lg flex items-center gap-2 ${
@@ -314,38 +340,6 @@ export const Navbar: React.FC<NavbarProps> = ({
             <span className="material-symbols-outlined text-sm">assignment</span>
             <span>Minhas Adoções</span>
           </button>
-
-          {isOng && (
-            <button
-              onClick={() => handleNav('painel-ong')}
-              className={`block w-full text-left py-2 px-3 rounded-lg bg-[#a0efd6]/50 text-[#126b57] font-bold`}
-            >
-              Painel da ONG
-            </button>
-          )}
-
-          {isAdmin && (
-            <button
-              onClick={() => handleNav('painel-admin')}
-              className={`block w-full text-left py-2 px-3 rounded-lg bg-[#074469] text-white font-bold`}
-            >
-              Painel do Administrador
-            </button>
-          )}
-
-          {!currentUser && !currentOng && (
-            <div className="pt-3 border-t border-[#e0e3e5] space-y-2">
-              <button
-                onClick={() => {
-                  setMobileMenuOpen(false);
-                  onOpenAuth('user');
-                }}
-                className="w-full py-2.5 text-center bg-[#074469] text-white rounded-xl font-bold text-xs"
-              >
-                Entrar / Cadastrar no MatchPet
-              </button>
-            </div>
-          )}
         </div>
       )}
     </header>

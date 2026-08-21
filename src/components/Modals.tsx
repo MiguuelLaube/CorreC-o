@@ -5,7 +5,6 @@ import { authService, ADMIN_CREDENTIALS } from '../services/authService';
 /* 1. Manifestar Interesse / Agendar Visita Modal */
 export { AdoptionInterestModal } from './AdoptionInterestModal';
 
-
 /* 2. Indicar ONG Modal */
 interface IndicarOngModalProps {
   onClose: () => void;
@@ -37,46 +36,46 @@ export const IndicarOngModal: React.FC<IndicarOngModalProps> = ({ onClose, onSub
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-white rounded-3xl max-w-lg w-full p-6 md:p-8 shadow-2xl border border-[#e0e3e5] relative animate-in fade-in zoom-in duration-200">
+    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto font-['Plus_Jakarta_Sans']">
+      <div className="bg-white dark:bg-[#121d28] rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-[#e2e8f0] dark:border-[#1e2c3c] relative animate-in fade-in zoom-in duration-200 text-left">
         <button
           onClick={onClose}
-          className="absolute top-5 right-5 text-[#72787f] hover:text-[#191c1e] p-1.5 rounded-full hover:bg-[#e0e3e5] cursor-pointer"
+          className="absolute top-5 right-5 text-[#64748b] dark:text-[#94a3b8] hover:text-[#0f172a] dark:hover:text-white p-2 rounded-full hover:bg-[#f1f5f9] dark:hover:bg-[#162230] cursor-pointer transition-colors"
         >
-          <span className="material-symbols-outlined">close</span>
+          <span className="material-symbols-outlined text-xl">close</span>
         </button>
 
         {submitted ? (
           <div className="text-center py-8">
-            <div className="w-16 h-16 bg-[#a0efd6] text-[#126b57] rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <div className="w-16 h-16 bg-[#a0efd6]/50 dark:bg-[#5BE29D]/20 text-[#126b57] dark:text-[#5BE29D] border border-[#126b57]/20 dark:border-[#5BE29D]/40 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-xs">
               <span className="material-symbols-outlined text-3xl">thumb_up</span>
             </div>
-            <h3 className="font-['Plus_Jakarta_Sans'] text-2xl font-bold text-[#074469] mb-2">
+            <h3 className="font-['Plus_Jakarta_Sans'] text-2xl font-bold text-[#074469] dark:text-white mb-2">
               Indicação Enviada!
             </h3>
-            <p className="font-['Be_Vietnam_Pro'] text-sm text-[#41474e]">
+            <p className="font-['Inter'] text-sm text-[#475569] dark:text-[#cbd5e1]">
               A equipe do MatchPet entrará em contato para cadastrar a instituição.
             </p>
           </div>
         ) : (
           <div>
             <div className="flex items-center gap-3 mb-2">
-              <div className="w-10 h-10 rounded-xl bg-[#074469]/10 text-[#074469] flex items-center justify-center">
+              <div className="w-10 h-10 rounded-2xl bg-[#074469]/10 dark:bg-[#5BE29D]/15 text-[#074469] dark:text-[#5BE29D] flex items-center justify-center shadow-2xs">
                 <span className="material-symbols-outlined text-2xl">add_business</span>
               </div>
               <div>
-                <h3 className="font-['Plus_Jakarta_Sans'] text-2xl font-bold text-[#074469]">
+                <h3 className="font-['Plus_Jakarta_Sans'] text-xl sm:text-2xl font-bold text-[#074469] dark:text-white">
                   Indicar uma ONG
                 </h3>
-                <p className="font-['Be_Vietnam_Pro'] text-xs text-[#72787f]">
+                <p className="font-['Inter'] text-xs text-[#64748b] dark:text-[#94a3b8]">
                   Ajude a expandir a rede de adoção do MatchPet.
                 </p>
               </div>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-3.5 mt-5 font-['Be_Vietnam_Pro'] text-sm">
+            <form onSubmit={handleSubmit} className="space-y-3.5 mt-5 font-['Inter'] text-sm">
               <div>
-                <label className="block text-xs font-semibold text-[#41474e] mb-1">
+                <label className="block text-xs font-bold text-[#0f172a] dark:text-[#f1f5f9] mb-1">
                   Nome da ONG ou Protetor *
                 </label>
                 <input
@@ -85,13 +84,13 @@ export const IndicarOngModal: React.FC<IndicarOngModalProps> = ({ onClose, onSub
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Ex: Associação Patinhas do Bem"
-                  className="w-full bg-[#f2f4f6] border border-[#c1c7cf] rounded-xl p-2.5 outline-none focus:border-[#074469] focus:bg-white"
+                  className="w-full bg-[#f8fafc] dark:bg-[#162230] border border-[#cbd5e1] dark:border-[#2b3e52] rounded-xl px-3.5 py-2.5 outline-none focus:border-[#074469] dark:focus:border-[#5BE29D] text-sm text-[#0f172a] dark:text-[#f1f5f9]"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-[#41474e] mb-1">
+                  <label className="block text-xs font-bold text-[#0f172a] dark:text-[#f1f5f9] mb-1">
                     Cidade *
                   </label>
                   <input
@@ -100,11 +99,11 @@ export const IndicarOngModal: React.FC<IndicarOngModalProps> = ({ onClose, onSub
                     value={city}
                     onChange={(e) => setCity(e.target.value)}
                     placeholder="Ex: São Paulo"
-                    className="w-full bg-[#f2f4f6] border border-[#c1c7cf] rounded-xl p-2.5 outline-none focus:border-[#074469] focus:bg-white"
+                    className="w-full bg-[#f8fafc] dark:bg-[#162230] border border-[#cbd5e1] dark:border-[#2b3e52] rounded-xl px-3.5 py-2.5 outline-none focus:border-[#074469] dark:focus:border-[#5BE29D] text-sm text-[#0f172a] dark:text-[#f1f5f9]"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-[#41474e] mb-1">
+                  <label className="block text-xs font-bold text-[#0f172a] dark:text-[#f1f5f9] mb-1">
                     Estado (UF)
                   </label>
                   <input
@@ -112,13 +111,13 @@ export const IndicarOngModal: React.FC<IndicarOngModalProps> = ({ onClose, onSub
                     value={state}
                     onChange={(e) => setState(e.target.value.toUpperCase().slice(0, 2))}
                     placeholder="SP"
-                    className="w-full bg-[#f2f4f6] border border-[#c1c7cf] rounded-xl p-2.5 outline-none focus:border-[#074469] focus:bg-white uppercase font-mono"
+                    className="w-full bg-[#f8fafc] dark:bg-[#162230] border border-[#cbd5e1] dark:border-[#2b3e52] rounded-xl px-3.5 py-2.5 outline-none focus:border-[#074469] dark:focus:border-[#5BE29D] uppercase font-mono text-sm text-[#0f172a] dark:text-[#f1f5f9]"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[#41474e] mb-1">
+                <label className="block text-xs font-bold text-[#0f172a] dark:text-[#f1f5f9] mb-1">
                   Telefone / WhatsApp de Contato *
                 </label>
                 <input
@@ -127,12 +126,12 @@ export const IndicarOngModal: React.FC<IndicarOngModalProps> = ({ onClose, onSub
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="(11) 98765-4321"
-                  className="w-full bg-[#f2f4f6] border border-[#c1c7cf] rounded-xl p-2.5 outline-none focus:border-[#074469] focus:bg-white"
+                  className="w-full bg-[#f8fafc] dark:bg-[#162230] border border-[#cbd5e1] dark:border-[#2b3e52] rounded-xl px-3.5 py-2.5 outline-none focus:border-[#074469] dark:focus:border-[#5BE29D] text-sm text-[#0f172a] dark:text-[#f1f5f9]"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[#41474e] mb-1">
+                <label className="block text-xs font-bold text-[#0f172a] dark:text-[#f1f5f9] mb-1">
                   Breve descrição ou link das redes sociais
                 </label>
                 <textarea
@@ -140,14 +139,14 @@ export const IndicarOngModal: React.FC<IndicarOngModalProps> = ({ onClose, onSub
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Ex: @ongpatinhas no Instagram, atuam com cães resgatados..."
-                  className="w-full bg-[#f2f4f6] border border-[#c1c7cf] rounded-xl p-2.5 outline-none focus:border-[#074469] focus:bg-white resize-none"
+                  className="w-full bg-[#f8fafc] dark:bg-[#162230] border border-[#cbd5e1] dark:border-[#2b3e52] rounded-xl px-3.5 py-2.5 outline-none focus:border-[#074469] dark:focus:border-[#5BE29D] resize-none text-sm text-[#0f172a] dark:text-[#f1f5f9]"
                 />
               </div>
 
               <div className="pt-2">
                 <button
                   type="submit"
-                  className="w-full bg-[#074469] hover:bg-[#2a5c82] text-white font-bold py-3 rounded-xl transition-all shadow-sm cursor-pointer"
+                  className="w-full bg-[#074469] dark:bg-[#5BE29D] hover:bg-[#2a5c82] dark:hover:bg-[#48cf8b] text-white dark:text-[#063e2e] font-bold py-3.5 rounded-2xl transition-all shadow-xs cursor-pointer min-h-[44px]"
                 >
                   Enviar Indicação
                 </button>
@@ -251,28 +250,30 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl max-w-md w-full p-6 md:p-8 shadow-2xl border border-[#e0e3e5] relative animate-in fade-in zoom-in duration-200">
+    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto font-['Plus_Jakarta_Sans']">
+      <div className="bg-white dark:bg-[#121d28] rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl border border-[#e2e8f0] dark:border-[#1e2c3c] relative animate-in fade-in zoom-in duration-200 text-left">
         <button
           onClick={onClose}
-          className="absolute top-5 right-5 text-[#72787f] hover:text-[#191c1e] p-1.5 rounded-full hover:bg-[#e0e3e5] cursor-pointer"
+          className="absolute top-5 right-5 text-[#64748b] dark:text-[#94a3b8] hover:text-[#0f172a] dark:hover:text-white p-2 rounded-full hover:bg-[#f1f5f9] dark:hover:bg-[#162230] cursor-pointer transition-colors"
         >
-          <span className="material-symbols-outlined">close</span>
+          <span className="material-symbols-outlined text-xl">close</span>
         </button>
 
-        {/* SELETOR DE PERFIL: ADOTANTE VS ONG/ADMIN */}
-        <div className="flex bg-[#eceef0] p-1 rounded-2xl mb-6 font-['Be_Vietnam_Pro'] text-xs font-bold">
+        {/* Alternador de Perfil: Adotante vs ONG/Admin */}
+        <div className="flex bg-[#f1f5f9] dark:bg-[#162230] p-1 rounded-2xl mb-6 border border-[#e2e8f0] dark:border-[#2b3e52]">
           <button
             type="button"
             onClick={() => {
               setProfileType('user');
               setErrorMessage(null);
             }}
-            className={`flex-1 py-2.5 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-              profileType === 'user' ? 'bg-[#074469] text-white shadow-xs' : 'text-[#41474e] hover:text-[#074469]'
+            className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+              profileType === 'user'
+                ? 'bg-[#074469] text-white shadow-xs'
+                : 'text-[#475569] dark:text-[#cbd5e1] hover:text-[#0f172a]'
             }`}
           >
-            <span className="material-symbols-outlined text-sm">person</span>
+            <span className="material-symbols-outlined text-base">person</span>
             <span>Sou Adotante</span>
           </button>
 
@@ -282,74 +283,88 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               setProfileType('ong');
               setErrorMessage(null);
             }}
-            className={`flex-1 py-2.5 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-              profileType === 'ong' ? 'bg-[#126b57] text-white shadow-xs' : 'text-[#41474e] hover:text-[#126b57]'
+            className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+              profileType === 'ong'
+                ? 'bg-[#126b57] text-white shadow-xs'
+                : 'text-[#475569] dark:text-[#cbd5e1] hover:text-[#0f172a]'
             }`}
           >
-            <span className="material-symbols-outlined text-sm">domain</span>
-            <span>Sou ONG / Admin</span>
+            <span className="material-symbols-outlined text-base">domain</span>
+            <span>ONG / Admin</span>
           </button>
         </div>
 
-        {/* Error message banner */}
         {errorMessage && (
-          <div className="mb-4 bg-[#ffdad6] text-[#ba1a1a] p-3 rounded-xl text-xs font-['Be_Vietnam_Pro'] flex items-center gap-2">
-            <span className="material-symbols-outlined text-sm">error</span>
+          <div className="mb-4 bg-[#ffdad6] dark:bg-[#ba1a1a]/20 border border-[#ba1a1a] text-[#93000a] dark:text-[#f87171] p-3 rounded-xl text-xs font-semibold flex items-center gap-2">
+            <span className="material-symbols-outlined text-base shrink-0">error</span>
             <span>{errorMessage}</span>
           </div>
         )}
 
         {/* ========================================================================= */}
-        {/* FLUXO 1: LOGIN / CADASTRO DE ADOTANTE */}
+        {/* PERFIL: ADOTANTE (LOGIN OU CADASTRO) */}
         {/* ========================================================================= */}
         {profileType === 'user' && (
           <div>
-            <div className="flex border-b border-[#e0e3e5] mb-5">
+            <div className="flex justify-between items-center mb-4">
+              <div>
+                <h3 className="font-['Plus_Jakarta_Sans'] font-bold text-lg text-[#074469] dark:text-white">
+                  {userMode === 'login' ? 'Entrar como Adotante' : 'Cadastro de Adotante'}
+                </h3>
+                <p className="font-['Inter'] text-xs text-[#64748b] dark:text-[#94a3b8] mt-0.5">
+                  {userMode === 'login'
+                    ? 'Acesse suas manifestações de interesse e histórico.'
+                    : 'Crie sua conta para manifestar interesse em animais.'}
+                </p>
+              </div>
+
               <button
                 type="button"
                 onClick={() => {
-                  setUserMode('login');
+                  setUserMode(userMode === 'login' ? 'register' : 'login');
                   setErrorMessage(null);
                 }}
-                className={`flex-1 pb-2.5 text-center font-['Plus_Jakarta_Sans'] font-bold text-sm border-b-2 transition-all cursor-pointer ${
-                  userMode === 'login' ? 'border-[#074469] text-[#074469]' : 'border-transparent text-[#72787f]'
-                }`}
+                className="text-xs text-[#074469] dark:text-[#5BE29D] font-bold hover:underline cursor-pointer"
               >
-                Entrar
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setUserMode('register');
-                  setErrorMessage(null);
-                }}
-                className={`flex-1 pb-2.5 text-center font-['Plus_Jakarta_Sans'] font-bold text-sm border-b-2 transition-all cursor-pointer ${
-                  userMode === 'register' ? 'border-[#074469] text-[#074469]' : 'border-transparent text-[#72787f]'
-                }`}
-              >
-                Criar Conta
+                {userMode === 'login' ? 'Criar Conta' : 'Já tenho conta'}
               </button>
             </div>
 
-            <form onSubmit={handleUserSubmit} className="space-y-3.5 font-['Be_Vietnam_Pro'] text-sm">
+            <form onSubmit={handleUserSubmit} className="space-y-3 font-['Inter'] text-sm">
               {userMode === 'register' && (
-                <div>
-                  <label className="block text-xs font-semibold text-[#41474e] mb-1">
-                    Nome Completo *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Seu nome completo"
-                    className="w-full bg-[#f2f4f6] border border-[#c1c7cf] rounded-xl p-2.5 outline-none focus:border-[#074469] focus:bg-white text-xs"
-                  />
-                </div>
+                <>
+                  <div>
+                    <label className="block text-xs font-bold text-[#0f172a] dark:text-[#f1f5f9] mb-1">
+                      Nome Completo *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder="Ex: Maria Silva"
+                      className="w-full bg-[#f8fafc] dark:bg-[#162230] border border-[#cbd5e1] dark:border-[#2b3e52] rounded-xl p-2.5 outline-none focus:border-[#074469] dark:focus:border-[#5BE29D] text-xs text-[#0f172a] dark:text-[#f1f5f9]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-[#0f172a] dark:text-[#f1f5f9] mb-1">
+                      Telefone / WhatsApp *
+                    </label>
+                    <input
+                      type="tel"
+                      required
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      placeholder="(11) 98765-4321"
+                      className="w-full bg-[#f8fafc] dark:bg-[#162230] border border-[#cbd5e1] dark:border-[#2b3e52] rounded-xl p-2.5 outline-none focus:border-[#074469] dark:focus:border-[#5BE29D] text-xs text-[#0f172a] dark:text-[#f1f5f9]"
+                    />
+                  </div>
+                </>
               )}
 
               <div>
-                <label className="block text-xs font-semibold text-[#41474e] mb-1">
+                <label className="block text-xs font-bold text-[#0f172a] dark:text-[#f1f5f9] mb-1">
                   E-mail do Adotante *
                 </label>
                 <input
@@ -357,35 +372,20 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="seu@email.com"
-                  className="w-full bg-[#f2f4f6] border border-[#c1c7cf] rounded-xl p-2.5 outline-none focus:border-[#074469] focus:bg-white text-xs"
+                  placeholder="seuemail@exemplo.com"
+                  className="w-full bg-[#f8fafc] dark:bg-[#162230] border border-[#cbd5e1] dark:border-[#2b3e52] rounded-xl p-2.5 outline-none focus:border-[#074469] dark:focus:border-[#5BE29D] text-xs text-[#0f172a] dark:text-[#f1f5f9]"
                 />
               </div>
 
-              {userMode === 'register' && (
-                <div>
-                  <label className="block text-xs font-semibold text-[#41474e] mb-1">
-                    WhatsApp (Opcional)
-                  </label>
-                  <input
-                    type="tel"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    placeholder="(11) 98765-4321"
-                    className="w-full bg-[#f2f4f6] border border-[#c1c7cf] rounded-xl p-2.5 outline-none focus:border-[#074469] focus:bg-white text-xs"
-                  />
-                </div>
-              )}
-
               <div>
                 <div className="flex justify-between items-center mb-1">
-                  <label className="block text-xs font-semibold text-[#41474e]">
+                  <label className="block text-xs font-bold text-[#0f172a] dark:text-[#f1f5f9]">
                     Senha *
                   </label>
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="text-[11px] text-[#074469] hover:underline cursor-pointer"
+                    className="text-[11px] text-[#074469] dark:text-[#5BE29D] hover:underline cursor-pointer font-semibold"
                   >
                     {showPassword ? 'Ocultar' : 'Mostrar'}
                   </button>
@@ -396,7 +396,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full bg-[#f2f4f6] border border-[#c1c7cf] rounded-xl p-2.5 outline-none focus:border-[#074469] focus:bg-white font-mono text-xs"
+                  className="w-full bg-[#f8fafc] dark:bg-[#162230] border border-[#cbd5e1] dark:border-[#2b3e52] rounded-xl p-2.5 outline-none focus:border-[#074469] dark:focus:border-[#5BE29D] font-mono text-xs text-[#0f172a] dark:text-[#f1f5f9]"
                 />
               </div>
 
@@ -404,9 +404,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full bg-[#074469] hover:bg-[#2a5c82] disabled:opacity-60 text-white font-bold py-3 rounded-xl transition-all shadow-sm cursor-pointer"
+                  className="w-full bg-[#074469] dark:bg-[#5BE29D] hover:bg-[#2a5c82] dark:hover:bg-[#48cf8b] disabled:opacity-60 text-white dark:text-[#063e2e] font-bold py-3.5 rounded-2xl transition-all shadow-xs cursor-pointer min-h-[44px]"
                 >
-                  {loading ? 'Acessando...' : userMode === 'login' ? 'Entrar como Adotante' : 'Cadastrar e Entrar'}
+                  {loading
+                    ? 'Aguarde...'
+                    : userMode === 'login'
+                    ? 'Entrar no MatchPet'
+                    : 'Finalizar Cadastro de Adotante'}
                 </button>
               </div>
             </form>
@@ -414,22 +418,22 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         )}
 
         {/* ========================================================================= */}
-        {/* FLUXO 2: LOGIN DE ONG OU ADMINISTRADOR GERAL */}
+        {/* PERFIL: ONG / ADMINISTRADOR */}
         {/* ========================================================================= */}
         {profileType === 'ong' && (
           <div>
             <div className="mb-4">
-              <h3 className="font-['Plus_Jakarta_Sans'] font-bold text-base text-[#126b57]">
+              <h3 className="font-['Plus_Jakarta_Sans'] font-bold text-lg text-[#126b57] dark:text-[#5BE29D]">
                 Acesso Restrito: ONGs & Administração
               </h3>
-              <p className="font-['Be_Vietnam_Pro'] text-xs text-[#72787f] mt-0.5">
+              <p className="font-['Inter'] text-xs text-[#64748b] dark:text-[#94a3b8] mt-0.5">
                 Utilize as credenciais geradas pelo Administrador MatchPet.
               </p>
             </div>
 
-            <form onSubmit={handleOngSubmit} className="space-y-3.5 font-['Be_Vietnam_Pro'] text-sm">
+            <form onSubmit={handleOngSubmit} className="space-y-3.5 font-['Inter'] text-sm">
               <div>
-                <label className="block text-xs font-semibold text-[#41474e] mb-1">
+                <label className="block text-xs font-bold text-[#0f172a] dark:text-[#f1f5f9] mb-1">
                   E-mail da Instituição ou Admin *
                 </label>
                 <input
@@ -438,19 +442,19 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   value={ongEmail}
                   onChange={(e) => setOngEmail(e.target.value)}
                   placeholder="login@ong.org.br ou admin@gmail.com"
-                  className="w-full bg-[#f2f4f6] border border-[#c1c7cf] rounded-xl p-2.5 outline-none focus:border-[#126b57] focus:bg-white text-xs"
+                  className="w-full bg-[#f8fafc] dark:bg-[#162230] border border-[#cbd5e1] dark:border-[#2b3e52] rounded-xl p-2.5 outline-none focus:border-[#126b57] dark:focus:border-[#5BE29D] text-xs text-[#0f172a] dark:text-[#f1f5f9]"
                 />
               </div>
 
               <div>
                 <div className="flex justify-between items-center mb-1">
-                  <label className="block text-xs font-semibold text-[#41474e]">
+                  <label className="block text-xs font-bold text-[#0f172a] dark:text-[#f1f5f9]">
                     Senha de Acesso *
                   </label>
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="text-[11px] text-[#126b57] hover:underline cursor-pointer"
+                    className="text-[11px] text-[#126b57] dark:text-[#5BE29D] hover:underline cursor-pointer font-semibold"
                   >
                     {showPassword ? 'Ocultar' : 'Mostrar'}
                   </button>
@@ -461,7 +465,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   value={ongPassword}
                   onChange={(e) => setOngPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full bg-[#f2f4f6] border border-[#c1c7cf] rounded-xl p-2.5 outline-none focus:border-[#126b57] focus:bg-white font-mono text-xs"
+                  className="w-full bg-[#f8fafc] dark:bg-[#162230] border border-[#cbd5e1] dark:border-[#2b3e52] rounded-xl p-2.5 outline-none focus:border-[#126b57] dark:focus:border-[#5BE29D] font-mono text-xs text-[#0f172a] dark:text-[#f1f5f9]"
                 />
               </div>
 
@@ -470,13 +474,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 <button
                   type="button"
                   onClick={fillAdminCredentials}
-                  className="w-full text-left text-[11px] text-[#074469] bg-[#074469]/5 hover:bg-[#074469]/10 p-2 rounded-xl border border-[#074469]/20 flex items-center justify-between cursor-pointer"
+                  className="w-full text-left text-[11px] text-[#074469] dark:text-[#5BE29D] bg-[#074469]/5 dark:bg-[#5BE29D]/10 hover:bg-[#074469]/10 p-2.5 rounded-xl border border-[#074469]/20 dark:border-[#5BE29D]/30 flex items-center justify-between cursor-pointer transition-colors"
                 >
-                  <span className="flex items-center gap-1">
-                    <span className="material-symbols-outlined text-xs">admin_panel_settings</span>
-                    Preencher credenciais do <strong>Administrador</strong>
+                  <span className="flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-sm">admin_panel_settings</span>
+                    <span>Preencher credenciais do <strong>Administrador</strong></span>
                   </span>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#074469]">Auto-fill</span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#074469] dark:text-[#5BE29D]">Auto-fill</span>
                 </button>
               </div>
 
@@ -484,7 +488,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full bg-[#126b57] hover:bg-[#005141] disabled:opacity-60 text-white font-bold py-3 rounded-xl transition-all shadow-sm cursor-pointer"
+                  className="w-full bg-[#126b57] hover:bg-[#005141] disabled:opacity-60 text-white font-bold py-3.5 rounded-2xl transition-all shadow-xs cursor-pointer min-h-[44px]"
                 >
                   {loading ? 'Validando Acesso...' : 'Entrar no Painel da ONG / Admin'}
                 </button>
@@ -509,31 +513,31 @@ export const ApoioPixModal: React.FC<{ onClose: () => void }> = ({ onClose }) =>
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl max-w-md w-full p-6 md:p-8 shadow-2xl border border-[#e0e3e5] relative animate-in fade-in zoom-in duration-200 text-center">
+    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 font-['Plus_Jakarta_Sans']">
+      <div className="bg-white dark:bg-[#121d28] rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl border border-[#e2e8f0] dark:border-[#1e2c3c] relative animate-in fade-in zoom-in duration-200 text-center">
         <button
           onClick={onClose}
-          className="absolute top-5 right-5 text-[#72787f] hover:text-[#191c1e] p-1.5 rounded-full hover:bg-[#e0e3e5] cursor-pointer"
+          className="absolute top-5 right-5 text-[#64748b] dark:text-[#94a3b8] hover:text-[#0f172a] dark:hover:text-white p-2 rounded-full hover:bg-[#f1f5f9] dark:hover:bg-[#162230] cursor-pointer transition-colors"
         >
-          <span className="material-symbols-outlined">close</span>
+          <span className="material-symbols-outlined text-xl">close</span>
         </button>
 
-        <div className="w-16 h-16 bg-[#a0efd6] text-[#126b57] rounded-2xl flex items-center justify-center mx-auto mb-4">
+        <div className="w-16 h-16 bg-[#a0efd6]/50 dark:bg-[#5BE29D]/20 text-[#126b57] dark:text-[#5BE29D] border border-[#126b57]/20 dark:border-[#5BE29D]/40 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-xs">
           <span className="material-symbols-outlined text-3xl">volunteer_activism</span>
         </div>
 
-        <h3 className="font-['Plus_Jakarta_Sans'] text-2xl font-bold text-[#074469] mb-2">
+        <h3 className="font-['Plus_Jakarta_Sans'] text-2xl font-bold text-[#074469] dark:text-white mb-2">
           Apoie o MatchPet
         </h3>
-        <p className="font-['Be_Vietnam_Pro'] text-xs sm:text-sm text-[#41474e] mb-6 leading-relaxed">
+        <p className="font-['Inter'] text-xs sm:text-sm text-[#475569] dark:text-[#cbd5e1] mb-6 leading-relaxed">
           Sua doação voluntária ajuda na manutenção da plataforma MatchPet e no suporte alimentar e médico de centenas de animais resgatados.
         </p>
 
-        <div className="bg-[#f7f9fb] p-4 rounded-2xl border border-[#e0e3e5] flex items-center justify-between gap-2 mb-6">
-          <span className="font-mono text-xs text-[#074469] font-bold truncate">{pixKey}</span>
+        <div className="bg-[#f8fafc] dark:bg-[#162230] p-4 rounded-2xl border border-[#e2e8f0] dark:border-[#2b3e52] flex items-center justify-between gap-2 mb-6">
+          <span className="font-mono text-xs sm:text-sm text-[#074469] dark:text-[#5BE29D] font-bold truncate">{pixKey}</span>
           <button
             onClick={handleCopy}
-            className="bg-[#074469] hover:bg-[#2a5c82] text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors shrink-0 cursor-pointer"
+            className="bg-[#074469] dark:bg-[#5BE29D] hover:bg-[#2a5c82] dark:hover:bg-[#48cf8b] text-white dark:text-[#063e2e] text-xs font-bold px-3.5 py-2 rounded-xl transition-colors shrink-0 cursor-pointer shadow-2xs"
           >
             {copied ? 'Copiado! ✓' : 'Copiar Chave'}
           </button>
@@ -541,7 +545,7 @@ export const ApoioPixModal: React.FC<{ onClose: () => void }> = ({ onClose }) =>
 
         <button
           onClick={onClose}
-          className="w-full bg-[#f2f4f6] hover:bg-[#e0e3e5] text-[#191c1e] font-semibold py-2.5 rounded-xl text-xs"
+          className="w-full bg-[#f1f5f9] dark:bg-[#162230] hover:bg-[#e2e8f0] dark:hover:bg-[#1e2f40] text-[#0f172a] dark:text-[#f1f5f9] font-bold py-3 rounded-xl text-xs sm:text-sm transition-colors cursor-pointer"
         >
           Fechar
         </button>
@@ -557,30 +561,30 @@ export const FosterDetailsModal: React.FC<{
   onAccept: () => void;
 }> = ({ request, onClose, onAccept }) => {
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl max-w-lg w-full p-6 md:p-8 shadow-2xl border border-[#e0e3e5] relative animate-in fade-in zoom-in duration-200">
+    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 font-['Plus_Jakarta_Sans']">
+      <div className="bg-white dark:bg-[#121d28] rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-[#e2e8f0] dark:border-[#1e2c3c] relative animate-in fade-in zoom-in duration-200 text-left">
         <button
           onClick={onClose}
-          className="absolute top-5 right-5 text-[#72787f] hover:text-[#191c1e] p-1.5 rounded-full hover:bg-[#e0e3e5] cursor-pointer"
+          className="absolute top-5 right-5 text-[#64748b] dark:text-[#94a3b8] hover:text-[#0f172a] dark:hover:text-white p-2 rounded-full hover:bg-[#f1f5f9] dark:hover:bg-[#162230] cursor-pointer transition-colors"
         >
-          <span className="material-symbols-outlined">close</span>
+          <span className="material-symbols-outlined text-xl">close</span>
         </button>
 
-        <h3 className="font-['Plus_Jakarta_Sans'] text-2xl font-bold text-[#074469] mb-4">
+        <h3 className="font-['Plus_Jakarta_Sans'] text-2xl font-bold text-[#074469] dark:text-white mb-4">
           Detalhes da Triagem
         </h3>
 
-        <div className="bg-[#f7f9fb] p-4 rounded-2xl border border-[#e0e3e5] space-y-2 text-xs font-['Be_Vietnam_Pro'] text-[#41474e] mb-6">
-          <p><strong>Animal:</strong> {request.petName} ({request.species})</p>
-          <p><strong>Solicitante:</strong> {request.requesterName || 'Adotante'}</p>
-          <p><strong>Telefone / WhatsApp:</strong> {request.phone || 'Não informado'}</p>
-          <p><strong>Motivo / Histórico:</strong> {request.reason}</p>
+        <div className="bg-[#f8fafc] dark:bg-[#162230] p-4 sm:p-5 rounded-2xl border border-[#e2e8f0] dark:border-[#2b3e52] space-y-2 text-xs sm:text-sm font-['Inter'] text-[#475569] dark:text-[#cbd5e1] mb-6">
+          <p><strong className="text-[#0f172a] dark:text-white">Animal:</strong> {request.petName} ({request.species})</p>
+          <p><strong className="text-[#0f172a] dark:text-white">Solicitante:</strong> {request.requesterName || 'Adotante'}</p>
+          <p><strong className="text-[#0f172a] dark:text-white">Telefone / WhatsApp:</strong> {request.phone || 'Não informado'}</p>
+          <p><strong className="text-[#0f172a] dark:text-white">Motivo / Histórico:</strong> {request.reason}</p>
         </div>
 
         <div className="flex gap-3">
           <button
             onClick={onClose}
-            className="flex-1 bg-[#f2f4f6] hover:bg-[#e0e3e5] text-[#191c1e] font-bold py-2.5 rounded-xl text-xs cursor-pointer"
+            className="flex-1 bg-[#f1f5f9] dark:bg-[#162230] hover:bg-[#e2e8f0] dark:hover:bg-[#1e2f40] text-[#0f172a] dark:text-[#f1f5f9] font-bold py-3 rounded-xl text-xs sm:text-sm cursor-pointer transition-colors"
           >
             Fechar
           </button>
@@ -589,7 +593,7 @@ export const FosterDetailsModal: React.FC<{
               onAccept();
               onClose();
             }}
-            className="flex-1 bg-[#126b57] hover:bg-[#005141] text-white font-bold py-2.5 rounded-xl text-xs transition-colors cursor-pointer shadow-xs"
+            className="flex-1 bg-[#126b57] hover:bg-[#005141] text-white font-bold py-3 rounded-xl text-xs sm:text-sm transition-colors cursor-pointer shadow-xs"
           >
             Aceitar Acolhimento
           </button>
@@ -606,30 +610,30 @@ export const ProfileAnalysisModal: React.FC<{
   onApprove: () => void;
 }> = ({ solicitation, onClose, onApprove }) => {
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl max-w-lg w-full p-6 md:p-8 shadow-2xl border border-[#e0e3e5] relative animate-in fade-in zoom-in duration-200">
+    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 font-['Plus_Jakarta_Sans']">
+      <div className="bg-white dark:bg-[#121d28] rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-[#e2e8f0] dark:border-[#1e2c3c] relative animate-in fade-in zoom-in duration-200 text-left">
         <button
           onClick={onClose}
-          className="absolute top-5 right-5 text-[#72787f] hover:text-[#191c1e] p-1.5 rounded-full hover:bg-[#e0e3e5] cursor-pointer"
+          className="absolute top-5 right-5 text-[#64748b] dark:text-[#94a3b8] hover:text-[#0f172a] dark:hover:text-white p-2 rounded-full hover:bg-[#f1f5f9] dark:hover:bg-[#162230] cursor-pointer transition-colors"
         >
-          <span className="material-symbols-outlined">close</span>
+          <span className="material-symbols-outlined text-xl">close</span>
         </button>
 
-        <h3 className="font-['Plus_Jakarta_Sans'] text-2xl font-bold text-[#074469] mb-4">
+        <h3 className="font-['Plus_Jakarta_Sans'] text-2xl font-bold text-[#074469] dark:text-white mb-4">
           Análise de Adoção: {solicitation.petName}
         </h3>
 
-        <div className="bg-[#f7f9fb] p-4 rounded-2xl border border-[#e0e3e5] space-y-2 text-xs font-['Be_Vietnam_Pro'] text-[#41474e] mb-6">
-          <p><strong>Candidato Adotante:</strong> {solicitation.requesterName}</p>
-          <p><strong>Telefone / WhatsApp:</strong> {solicitation.phone || 'Não informado'}</p>
-          <p><strong>E-mail:</strong> {solicitation.email || 'Não informado'}</p>
-          <p><strong>Detalhes / Residência:</strong> {solicitation.dateOrDetails}</p>
+        <div className="bg-[#f8fafc] dark:bg-[#162230] p-4 sm:p-5 rounded-2xl border border-[#e2e8f0] dark:border-[#2b3e52] space-y-2 text-xs sm:text-sm font-['Inter'] text-[#475569] dark:text-[#cbd5e1] mb-6">
+          <p><strong className="text-[#0f172a] dark:text-white">Candidato Adotante:</strong> {solicitation.requesterName}</p>
+          <p><strong className="text-[#0f172a] dark:text-white">Telefone / WhatsApp:</strong> {solicitation.phone || 'Não informado'}</p>
+          <p><strong className="text-[#0f172a] dark:text-white">E-mail:</strong> {solicitation.email || 'Não informado'}</p>
+          <p><strong className="text-[#0f172a] dark:text-white">Detalhes / Residência:</strong> {solicitation.dateOrDetails}</p>
         </div>
 
         <div className="flex gap-3">
           <button
             onClick={onClose}
-            className="flex-1 bg-[#f2f4f6] hover:bg-[#e0e3e5] text-[#191c1e] font-bold py-2.5 rounded-xl text-xs cursor-pointer"
+            className="flex-1 bg-[#f1f5f9] dark:bg-[#162230] hover:bg-[#e2e8f0] dark:hover:bg-[#1e2f40] text-[#0f172a] dark:text-[#f1f5f9] font-bold py-3 rounded-xl text-xs sm:text-sm cursor-pointer transition-colors"
           >
             Fechar
           </button>
@@ -638,7 +642,7 @@ export const ProfileAnalysisModal: React.FC<{
               onApprove();
               onClose();
             }}
-            className="flex-1 bg-[#126b57] hover:bg-[#005141] text-white font-bold py-2.5 rounded-xl text-xs transition-colors cursor-pointer shadow-xs"
+            className="flex-1 bg-[#126b57] hover:bg-[#005141] text-white font-bold py-3 rounded-xl text-xs sm:text-sm transition-colors cursor-pointer shadow-xs"
           >
             Conceder Adoção
           </button>

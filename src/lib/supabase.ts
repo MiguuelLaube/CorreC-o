@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 
 // Configurações do Supabase para o MatchPet
-// A chave anon pública é projetada pelo Supabase para uso seguro no frontend
+// A chave anon pública do Supabase é projetada para uso seguro no frontend com políticas RLS
 const DEFAULT_SUPABASE_URL = 'https://lfueqadcdsmujufekifo.supabase.co';
 const DEFAULT_SUPABASE_ANON_KEY =
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxmdWVxYWRjZHNtdWp1ZmVraWZvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxODc3MzgsImV4cCI6MjEwMjc2MzczOH0.mRAGUWzqPa14jJWbtmCdaPDWn7UU8XOhE75gr0TnWpg';
@@ -26,7 +26,8 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
   global: {
     headers: {
-      'apikey': supabaseAnonKey
+      apikey: supabaseAnonKey,
+      Authorization: `Bearer ${supabaseAnonKey}`
     }
   }
 });

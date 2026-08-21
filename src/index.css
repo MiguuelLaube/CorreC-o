@@ -1,9 +1,9 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: 'Be Vietnam Pro', system-ui, -apple-system, sans-serif;
+  --font-sans: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, sans-serif;
   --font-headline: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
-  --font-body: 'Be Vietnam Pro', system-ui, -apple-system, sans-serif;
+  --font-body: 'Inter', system-ui, -apple-system, sans-serif;
 
   --color-primary: #074469;
   --color-primary-container: #2a5c82;
@@ -12,10 +12,10 @@
   --color-primary-fixed: #cde5ff;
   --color-primary-fixed-dim: #9ccbf7;
 
-  --color-secondary: #126b57;
-  --color-secondary-container: #a0efd6;
-  --color-on-secondary: #ffffff;
-  --color-on-secondary-container: #196f5b;
+  --color-secondary: #5BE29D;
+  --color-secondary-container: #132822;
+  --color-on-secondary: #063e2e;
+  --color-on-secondary-container: #5BE29D;
   --color-secondary-fixed: #a3f2d9;
   --color-secondary-fixed-dim: #87d5bd;
 
@@ -24,27 +24,47 @@
   --color-tertiary-fixed: #ffdbc9;
   --color-on-tertiary-fixed: #331200;
 
-  --color-background: #f7f9fb;
-  --color-surface: #f7f9fb;
-  --color-surface-container-lowest: #ffffff;
-  --color-surface-container-low: #f2f4f6;
-  --color-surface-container: #eceef0;
-  --color-surface-container-high: #e6e8ea;
-  --color-surface-container-highest: #e0e3e5;
-  --color-surface-variant: #e0e3e5;
-  --color-surface-bright: #f7f9fb;
+  --color-background: #0b131b;
+  --color-surface: #0b131b;
+  --color-surface-container-lowest: #0c1520;
+  --color-surface-container-low: #101b26;
+  --color-surface-container: #121d28;
+  --color-surface-container-high: #162230;
+  --color-surface-container-highest: #1e2c3c;
+  --color-surface-variant: #1e2c3c;
+  --color-surface-bright: #121d28;
 
-  --color-on-background: #191c1e;
-  --color-on-surface: #191c1e;
-  --color-on-surface-variant: #41474e;
-  --color-outline: #72787f;
-  --color-outline-variant: #c1c7cf;
+  --color-on-background: #f1f5f9;
+  --color-on-surface: #f1f5f9;
+  --color-on-surface-variant: #cbd5e1;
+  --color-outline: #64748b;
+  --color-outline-variant: #2b3e52;
 
   --color-error: #ba1a1a;
   --color-error-container: #ffdad6;
   --color-on-error-container: #93000a;
 }
 
+/* ========================================================================= */
+/* BASE STYLES & TYPOGRAPHY SMOOTHING                                        */
+/* ========================================================================= */
+html {
+  color-scheme: dark;
+  scroll-behavior: smooth;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  min-height: 100vh;
+  background-color: #0b131b;
+  color: #f1f5f9;
+  overflow-x: hidden;
+}
+
+/* Material Symbols */
 .material-symbols-outlined {
   font-family: 'Material Symbols Outlined';
   font-weight: normal;
@@ -66,6 +86,22 @@
   font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
 }
 
+/* Scrollbar Utility */
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Touch Target Minimum Helper */
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* Infinite Carousel */
 @keyframes scrollInfinite {
   0% { transform: translateX(0); }
   100% { transform: translateX(-50%); }
@@ -82,3 +118,85 @@
   animation-play-state: paused;
 }
 
+/* ========================================================================= */
+/* DARK THEME RULES & OVERRIDES                                              */
+/* ========================================================================= */
+html, html.dark {
+  color-scheme: dark;
+}
+
+html body, html.dark body {
+  background-color: #0b131b !important;
+  color: #e2e8f0 !important;
+}
+
+html header, html.dark header {
+  background-color: rgba(16, 26, 36, 0.95) !important;
+  border-color: #1e2c3c !important;
+}
+
+html aside, html.dark aside {
+  background-color: #0a111a !important;
+  border-color: #1e2c3c !important;
+}
+
+.bg-white {
+  background-color: #121d28 !important;
+  color: #e2e8f0;
+}
+
+.bg-\[\#f7f9fb\] {
+  background-color: #0b131b !important;
+}
+
+.bg-\[\#f2f4f6\], .bg-\[\#f1f5f9\] {
+  background-color: #101b26 !important;
+}
+
+.bg-\[\#eceef0\] {
+  background-color: #162230 !important;
+}
+
+.border-\[\#e0e3e5\], .border-\[\#e2e8f0\] {
+  border-color: #1e2c3c !important;
+}
+
+.border-\[\#c1c7cf\], .border-\[\#cbd5e1\] {
+  border-color: #2b3e52 !important;
+}
+
+.text-\[\#191c1e\], .text-\[\#0f172a\] {
+  color: #f1f5f9 !important;
+}
+
+.text-\[\#41474e\], .text-\[\#475569\] {
+  color: #cbd5e1 !important;
+}
+
+.text-\[\#72787f\], .text-\[\#64748b\] {
+  color: #94a3b8 !important;
+}
+
+input, select, textarea {
+  background-color: #162230 !important;
+  color: #f8fafc !important;
+  border-color: #2b3e52 !important;
+}
+
+input:focus, select:focus, textarea:focus {
+  background-color: #1a2838 !important;
+  border-color: #5BE29D !important;
+  box-shadow: 0 0 0 3px rgba(91, 226, 157, 0.15) !important;
+}
+
+.hover\:bg-\[\#f2f4f6\]:hover, .hover\:bg-\[\#f1f5f9\]:hover {
+  background-color: #162230 !important;
+}
+
+.hover\:bg-\[\#eceef0\]:hover {
+  background-color: #1e2f42 !important;
+}
+
+.hover\:bg-\[\#e0e3e5\]:hover, .hover\:bg-\[\#e2e8f0\]:hover {
+  background-color: #25394d !important;
+}

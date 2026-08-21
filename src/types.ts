@@ -29,6 +29,16 @@ export interface OngSession {
   createdAt?: string;
 }
 
+export interface AdoptionHistoryEntry {
+  id: string;
+  date: string;
+  type: 'triagem_acolhimento' | 'cadastro_ong' | 'solicitacao_adocao' | 'adocao_aprovada' | 'adocao_negada' | 'edicao_dados';
+  title: string;
+  description: string;
+  actorName?: string;
+  actorRole?: 'ong' | 'adotante' | 'admin' | 'sistema';
+}
+
 export interface Pet {
   id: string;
   name: string;
@@ -45,6 +55,7 @@ export interface Pet {
   castrated?: boolean;
   dewormed?: boolean;
   specialNeeds?: boolean;
+  description?: string;
   mainImage: string;
   galleryImages?: string[];
   ongId?: string;
@@ -52,6 +63,8 @@ export interface Pet {
   entryDate?: string;
   status: 'Disponível' | 'Em Processo' | 'Adotado';
   favorite?: boolean;
+  originFosterId?: string;
+  adoptionHistory?: AdoptionHistoryEntry[];
 }
 
 export interface ONG {
@@ -98,6 +111,9 @@ export interface Solicitation {
   notes?: string;
   createdAt?: string;
   updatedAt?: string;
+  rejectedAt?: string;
+  rejectionReason?: string;
+  dismissedByOng?: boolean;
 }
 
 export interface FosterRequest {
@@ -110,6 +126,7 @@ export interface FosterRequest {
   timestamp: string;
   status: 'pending' | 'accepted' | 'declined';
   photoUrl?: string;
+  galleryUrls?: string[];
   requesterName?: string;
   requesterEmail?: string;
   phone?: string;
@@ -119,6 +136,10 @@ export interface FosterRequest {
   acceptedByOngEmail?: string;
   acceptedByOngAddress?: string;
   acceptedAt?: string;
+  declinedAt?: string;
+  rejectionReason?: string;
+  promotedToPetId?: string;
+  dismissedByOng?: boolean;
 }
 
 export interface Partner {
@@ -130,6 +151,19 @@ export interface Partner {
   url: string;
   badge?: string;
   discountOrBenefit?: string;
+}
+
+export interface AppNotification {
+  id: string;
+  userId?: string;
+  userEmail?: string;
+  ongId?: string;
+  title: string;
+  message: string;
+  type: 'adoption_rejected' | 'adoption_approved' | 'foster_accepted' | 'foster_declined' | 'info';
+  relatedId?: string;
+  read: boolean;
+  createdAt: string;
 }
 
 export type ActiveTab =

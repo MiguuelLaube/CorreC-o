@@ -1,4 +1,4 @@
-import { Pet, ONG, Solicitation, FosterRequest, Partner } from '../types';
+import { Pet, ONG, Solicitation, FosterRequest, Partner, AppNotification, AdoptionHistoryEntry } from '../types';
 import { INITIAL_PETS, INITIAL_ONGS, INITIAL_SOLICITATIONS, INITIAL_FOSTER_REQUESTS, PARTNERS_LIST } from '../data/initialData';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
@@ -8,7 +8,8 @@ const STORAGE_KEYS = {
   SOLICITATIONS: 'matchpet_solicitations_store_v2',
   FOSTER_REQUESTS: 'matchpet_foster_requests_store_v2',
   PARTNERS: 'matchpet_partners_store_v2',
-  INITIALIZED: 'matchpet_initialized_v4'
+  NOTIFICATIONS: 'matchpet_notifications_store_v1',
+  INITIALIZED: 'matchpet_initialized_v5'
 };
 
 // IDs de demonstração / genéricos padrão do sistema
@@ -37,7 +38,6 @@ function setLocal<T>(key: string, value: T): void {
 }
 
 function ensureLocalInitialized(): void {
-  // Limpeza automática de dados de teste/demonstração prévios no cache local
   try {
     const currentPets = getLocal<Pet[]>(STORAGE_KEYS.PETS, []);
     const filteredPets = currentPets.filter((p) => !DEMO_PET_IDS.includes(p.id));
@@ -63,6 +63,7 @@ function ensureLocalInitialized(): void {
       setLocal(STORAGE_KEYS.SOLICITATIONS, filteredSols);
       setLocal(STORAGE_KEYS.FOSTER_REQUESTS, filteredFosters);
       setLocal(STORAGE_KEYS.PARTNERS, PARTNERS_LIST);
+      setLocal(STORAGE_KEYS.NOTIFICATIONS, []);
       localStorage.setItem(STORAGE_KEYS.INITIALIZED, 'true');
     }
   } catch (e) {
@@ -94,13 +95,16 @@ function mapPetFromSupabase(row: any): Pet {
     castrated: Boolean(row.castrated ?? row.castrado),
     dewormed: Boolean(row.dewormed ?? true),
     specialNeeds: Boolean(row.special_needs ?? false),
+    description: row.description || row.descricao,
     mainImage: row.main_image || (Array.isArray(row.fotos) && row.fotos[0]) || 'https://images.unsplash.com/photo-1543466835-00a7907e9de1',
     galleryImages: row.gallery_images || (Array.isArray(row.fotos) ? row.fotos.slice(1) : []),
     ongId: String(row.ong_id || 'ong-amigos-de-patas'),
     ongName: row.ong_name || 'ONG Parceira',
     entryDate: row.entry_date || new Date().toLocaleDateString('pt-BR'),
     status: (row.status || 'Disponível') as any,
-    favorite: Boolean(row.favorite)
+    favorite: Boolean(row.favorite),
+    originFosterId: row.origin_foster_id,
+    adoptionHistory: row.adoption_history || []
   };
 }
 
@@ -121,6 +125,7 @@ function mapPetToSupabase(pet: Pet): any {
     castrated: pet.castrated ?? true,
     dewormed: pet.dewormed ?? true,
     special_needs: pet.specialNeeds ?? false,
+    description: pet.description,
     main_image: pet.mainImage,
     gallery_images: pet.galleryImages || [],
     ong_id: pet.ongId || 'ong-amigos-de-patas',
@@ -178,7 +183,7 @@ function mapSolicitationFromSupabase(row: any): Solicitation {
     requesterEmail: row.requester_email || row.email,
     userId: row.user_id,
     dateOrDetails: row.date_or_details || row.mensagem || '',
-    status: (row.status === 'aprovada' ? 'approved' : row.status === 'recusada' ? 'rejected' : (row.status || 'pending')) as any,
+    status: (row.status === 'aprovada' ? 'approved' : row.status === 'recusada' || row.status === 'negado' ? 'rejected' : (row.status || 'pending')) as any,
     adoptionGranted: Boolean(row.adoption_granted ?? (row.status === 'approved')),
     phone: row.phone || '',
     email: row.email || '',
@@ -194,7 +199,10 @@ function mapSolicitationFromSupabase(row: any): Solicitation {
     visitPreference: row.visit_preference,
     notes: row.notes,
     createdAt: row.created_at || new Date().toISOString(),
-    updatedAt: row.updated_at
+    updatedAt: row.updated_at,
+    rejectedAt: row.rejected_at,
+    rejectionReason: row.rejection_reason,
+    dismissedByOng: Boolean(row.dismissed_by_ong)
   };
 }
 
@@ -230,27 +238,37 @@ function mapSolicitationToSupabase(sol: Solicitation): any {
 function mapFosterFromSupabase(row: any): FosterRequest {
   return {
     id: String(row.id),
+    userId: row.user_id,
     petName: row.pet_name || '',
     species: row.species || 'Cachorro',
+    size: row.size || 'Médio',
     reason: row.reason || row.mensagem || '',
     timestamp: row.timestamp || (row.created_at ? new Date(row.created_at).toLocaleTimeString('pt-BR') : new Date().toLocaleTimeString('pt-BR')),
-    status: (row.status === 'aprovada' ? 'accepted' : row.status === 'recusada' ? 'declined' : (row.status || 'pending')) as any,
+    status: (row.status === 'aprovada' ? 'accepted' : row.status === 'recusada' || row.status === 'negado' ? 'declined' : (row.status || 'pending')) as any,
     photoUrl: row.photo_url,
+    galleryUrls: row.gallery_urls || [],
     requesterName: row.requester_name,
     requesterEmail: row.requester_email || row.email,
     phone: row.phone,
     acceptedByOngId: row.accepted_by_ong_id,
     acceptedByOngName: row.accepted_by_ong_name,
     acceptedByOngPhone: row.accepted_by_ong_phone,
-    acceptedByOngAddress: row.accepted_by_ong_address
+    acceptedByOngAddress: row.accepted_by_ong_address,
+    acceptedAt: row.accepted_at,
+    declinedAt: row.declined_at,
+    rejectionReason: row.rejection_reason,
+    promotedToPetId: row.promoted_to_pet_id,
+    dismissedByOng: Boolean(row.dismissed_by_ong)
   };
 }
 
 function mapFosterToSupabase(foster: FosterRequest): any {
   return {
     id: String(foster.id),
+    user_id: foster.userId,
     pet_name: foster.petName,
     species: foster.species,
+    size: foster.size,
     reason: foster.reason,
     timestamp: foster.timestamp,
     status: foster.status,
@@ -308,7 +326,11 @@ export const dbService = {
 
     if (existingIndex >= 0) {
       updatedPets = [...currentPets];
-      updatedPets[existingIndex] = pet;
+      updatedPets[existingIndex] = {
+        ...currentPets[existingIndex],
+        ...pet,
+        adoptionHistory: pet.adoptionHistory || currentPets[existingIndex].adoptionHistory || []
+      };
     } else {
       updatedPets = [pet, ...currentPets];
     }
@@ -326,6 +348,23 @@ export const dbService = {
     return pet;
   },
 
+  async addAdoptionHistoryEntry(petId: string, entry: Omit<AdoptionHistoryEntry, 'id' | 'date'>): Promise<void> {
+    const currentPets = getLocal<Pet[]>(STORAGE_KEYS.PETS, []);
+    const pet = currentPets.find((p) => p.id === petId);
+    if (!pet) return;
+
+    const newEntry: AdoptionHistoryEntry = {
+      id: `hist-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+      date: new Date().toLocaleDateString('pt-BR') + ' ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+      ...entry
+    };
+
+    const updatedHistory = [newEntry, ...(pet.adoptionHistory || [])];
+    pet.adoptionHistory = updatedHistory;
+
+    await this.savePet(pet);
+  },
+
   async deletePet(petId: string): Promise<void> {
     const currentPets = getLocal<Pet[]>(STORAGE_KEYS.PETS, []).filter((p) => !DEMO_PET_IDS.includes(p.id));
     const updatedPets = currentPets.filter((p) => p.id !== petId);
@@ -340,9 +379,27 @@ export const dbService = {
     }
   },
 
-  async updatePetStatus(petId: string, status: 'Disponível' | 'Em Processo' | 'Adotado'): Promise<void> {
+  async updatePetStatus(petId: string, status: 'Disponível' | 'Em Processo' | 'Adotado', actorName?: string): Promise<void> {
     const currentPets = getLocal<Pet[]>(STORAGE_KEYS.PETS, []).filter((p) => !DEMO_PET_IDS.includes(p.id));
-    const updatedPets = currentPets.map((p) => (p.id === petId ? { ...p, status } : p));
+    const updatedPets = currentPets.map((p) => {
+      if (p.id === petId) {
+        const historyEntry: AdoptionHistoryEntry = {
+          id: `hist-${Date.now()}`,
+          date: new Date().toLocaleDateString('pt-BR'),
+          type: 'edicao_dados',
+          title: `Status alterado para "${status}"`,
+          description: `O status do animal foi atualizado para ${status}.`,
+          actorName: actorName || p.ongName || 'ONG',
+          actorRole: 'ong'
+        };
+        return {
+          ...p,
+          status,
+          adoptionHistory: [historyEntry, ...(p.adoptionHistory || [])]
+        };
+      }
+      return p;
+    });
     setLocal(STORAGE_KEYS.PETS, updatedPets);
 
     if (isSupabaseConfigured) {
@@ -472,7 +529,7 @@ export const dbService = {
       const local = getLocal<Solicitation[]>(STORAGE_KEYS.SOLICITATIONS, []).filter((s) => !DEMO_SOL_IDS.includes(s.id));
       all = local.filter((s) => {
         if (filterOngId && s.ongId !== filterOngId) return false;
-        if (filterUserEmail && s.requesterEmail?.toLowerCase() !== filterUserEmail.toLowerCase()) return false;
+        if (filterUserEmail && s.requesterEmail?.toLowerCase() !== filterUserEmail.toLowerCase() && s.email?.toLowerCase() !== filterUserEmail.toLowerCase()) return false;
         return true;
       });
     }
@@ -494,6 +551,17 @@ export const dbService = {
       }
     }
 
+    // Adiciona ao histórico do pet se existir
+    if (solicitation.petId) {
+      await this.addAdoptionHistoryEntry(solicitation.petId, {
+        type: 'solicitacao_adocao',
+        title: `Manifestação de Interesse recebida`,
+        description: `O adotante ${solicitation.requesterName} manifestou interesse na adoção.`,
+        actorName: solicitation.requesterName,
+        actorRole: 'adotante'
+      });
+    }
+
     return solicitation;
   },
 
@@ -501,20 +569,85 @@ export const dbService = {
     id: string,
     status: 'pending' | 'in_review' | 'approved' | 'rejected' | 'completed' | 'canceled',
     extraFields?: Partial<Solicitation>
-  ): Promise<void> {
+  ): Promise<Solicitation | null> {
     const current = getLocal<Solicitation[]>(STORAGE_KEYS.SOLICITATIONS, []).filter((s) => !DEMO_SOL_IDS.includes(s.id));
-    const updated = current.map((s) =>
-      s.id === id
-        ? {
-            ...s,
-            ...extraFields,
-            status,
-            adoptionGranted: status === 'approved' || status === 'completed',
-            updatedAt: new Date().toISOString()
-          }
-        : s
-    );
+    let targetSol: Solicitation | null = null;
+
+    const updated = current.map((s) => {
+      if (s.id === id) {
+        targetSol = {
+          ...s,
+          ...extraFields,
+          status,
+          adoptionGranted: status === 'approved' || status === 'completed',
+          updatedAt: new Date().toISOString(),
+          rejectedAt: status === 'rejected' ? (extraFields?.rejectedAt || new Date().toISOString()) : s.rejectedAt,
+          dismissedByOng: status === 'rejected' ? true : (extraFields?.dismissedByOng ?? s.dismissedByOng)
+        };
+        return targetSol;
+      }
+      return s;
+    });
+
     setLocal(STORAGE_KEYS.SOLICITATIONS, updated);
+
+    if (targetSol) {
+      // Se negado / rejeitado, gerar notificação para o usuário adotante
+      if (status === 'rejected') {
+        const sol = targetSol as Solicitation;
+        await this.sendNotification({
+          id: `notif-${Date.now()}`,
+          userId: sol.userId,
+          userEmail: sol.requesterEmail || sol.email,
+          ongId: sol.ongId,
+          title: `Pedido de Adoção Negado - ${sol.petName}`,
+          message: `Seu pedido de adoção para ${sol.petName} foi analisado e negado pela ONG ${sol.ongName || 'responsável'}.${extraFields?.rejectionReason ? ` Motivo: ${extraFields.rejectionReason}` : ''}`,
+          type: 'adoption_rejected',
+          relatedId: sol.id,
+          read: false,
+          createdAt: new Date().toISOString()
+        });
+
+        // Registrar no histórico do pet
+        if (sol.petId) {
+          await this.addAdoptionHistoryEntry(sol.petId, {
+            type: 'adocao_negada',
+            title: `Pedido de Adoção Negado`,
+            description: `A solicitação de ${sol.requesterName} foi recusada pela ONG.`,
+            actorName: sol.ongName || 'ONG',
+            actorRole: 'ong'
+          });
+        }
+      }
+
+      // Se aprovado, gerar notificação de sucesso e atualizar pet
+      if (status === 'approved') {
+        const sol = targetSol as Solicitation;
+        await this.sendNotification({
+          id: `notif-${Date.now()}`,
+          userId: sol.userId,
+          userEmail: sol.requesterEmail || sol.email,
+          ongId: sol.ongId,
+          title: `🎉 Parabéns! Adoção Aprovada - ${sol.petName}`,
+          message: `Sua solicitação de adoção para ${sol.petName} foi APROVADA pela ONG ${sol.ongName || 'responsável'}! A ONG entrará em contato para os próximos passos.`,
+          type: 'adoption_approved',
+          relatedId: sol.id,
+          read: false,
+          createdAt: new Date().toISOString()
+        });
+
+        if (sol.petId) {
+          await this.updatePetStatus(sol.petId, 'Adotado', sol.ongName);
+          await this.addAdoptionHistoryEntry(sol.petId, {
+            type: 'adocao_aprovada',
+            title: `Adoção Aprovada e Concedida`,
+            description: `Pet oficialmente adotado por ${sol.requesterName} (${sol.phone || sol.email}).`,
+            actorName: sol.ongName || 'ONG',
+            actorRole: 'ong'
+          });
+        }
+      }
+    }
 
     if (isSupabaseConfigured) {
       try {
@@ -530,6 +663,8 @@ export const dbService = {
         console.error('Erro ao atualizar status no Supabase:', err);
       }
     }
+
+    return targetSol;
   },
 
   async deleteSolicitation(id: string): Promise<void> {
@@ -573,7 +708,6 @@ export const dbService = {
       all = getLocal<FosterRequest[]>(STORAGE_KEYS.FOSTER_REQUESTS, []).filter((f) => !DEMO_FOSTER_IDS.includes(f.id));
     }
 
-    // Filtrar com segurança se especificado
     if (filterOngId) {
       all = all.filter((f) => f.acceptedByOngId === filterOngId || f.status === 'pending');
     }
@@ -604,22 +738,64 @@ export const dbService = {
   async updateFosterStatus(
     id: string,
     status: 'accepted' | 'declined' | 'pending',
-    ongInfo?: { id: string; name: string; phone: string; address: string }
-  ): Promise<void> {
+    ongInfo?: { id: string; name: string; phone: string; address: string },
+    extraFields?: Partial<FosterRequest>
+  ): Promise<FosterRequest | null> {
     const current = getLocal<FosterRequest[]>(STORAGE_KEYS.FOSTER_REQUESTS, []).filter((f) => !DEMO_FOSTER_IDS.includes(f.id));
-    const updated = current.map((f) =>
-      f.id === id
-        ? {
-            ...f,
-            status,
-            acceptedByOngId: ongInfo?.id || f.acceptedByOngId,
-            acceptedByOngName: ongInfo?.name || f.acceptedByOngName,
-            acceptedByOngPhone: ongInfo?.phone || f.acceptedByOngPhone,
-            acceptedByOngAddress: ongInfo?.address || f.acceptedByOngAddress
-          }
-        : f
-    );
+    let targetFoster: FosterRequest | null = null;
+
+    const updated = current.map((f) => {
+      if (f.id === id) {
+        targetFoster = {
+          ...f,
+          ...extraFields,
+          status,
+          acceptedByOngId: ongInfo?.id || f.acceptedByOngId,
+          acceptedByOngName: ongInfo?.name || f.acceptedByOngName,
+          acceptedByOngPhone: ongInfo?.phone || f.acceptedByOngPhone,
+          acceptedByOngAddress: ongInfo?.address || f.acceptedByOngAddress,
+          acceptedAt: status === 'accepted' ? new Date().toISOString() : f.acceptedAt,
+          declinedAt: status === 'declined' ? new Date().toISOString() : f.declinedAt,
+          dismissedByOng: status === 'declined' ? true : (extraFields?.dismissedByOng ?? f.dismissedByOng)
+        };
+        return targetFoster;
+      }
+      return f;
+    });
     setLocal(STORAGE_KEYS.FOSTER_REQUESTS, updated);
+
+    if (targetFoster) {
+      const foster = targetFoster as FosterRequest;
+      if (status === 'declined') {
+        // Enviar notificação de recusa
+        await this.sendNotification({
+          id: `notif-${Date.now()}`,
+          userId: foster.userId,
+          userEmail: foster.requesterEmail,
+          ongId: ongInfo?.id,
+          title: `Triagem Recusada - ${foster.petName}`,
+          message: `Sua solicitação de acolhimento para o animal ${foster.petName} não pôde ser atendida no momento.${extraFields?.rejectionReason ? ` Motivo: ${extraFields.rejectionReason}` : ''}`,
+          type: 'foster_declined',
+          relatedId: foster.id,
+          read: false,
+          createdAt: new Date().toISOString()
+        });
+      } else if (status === 'accepted') {
+        // Enviar notificação de aceite
+        await this.sendNotification({
+          id: `notif-${Date.now()}`,
+          userId: foster.userId,
+          userEmail: foster.requesterEmail,
+          ongId: ongInfo?.id,
+          title: `Triagem Aceita - ${foster.petName}! 🐾`,
+          message: `A ONG ${ongInfo?.name || 'Parceira'} aceitou o acolhimento do animal ${foster.petName}! Entre em contato para combinar a entrega.`,
+          type: 'foster_accepted',
+          relatedId: foster.id,
+          read: false,
+          createdAt: new Date().toISOString()
+        });
+      }
+    }
 
     if (isSupabaseConfigured) {
       try {
@@ -637,37 +813,51 @@ export const dbService = {
         console.error('Erro ao atualizar acolhimento no Supabase:', err);
       }
     }
+
+    return targetFoster;
+  },
+
+  // ----------------------------------------
+  // NOTIFICAÇÕES DO SISTEMA (USUÁRIOS E ONGS)
+  // ----------------------------------------
+  async getNotifications(userEmail?: string, userId?: string): Promise<AppNotification[]> {
+    const list = getLocal<AppNotification[]>(STORAGE_KEYS.NOTIFICATIONS, []);
+    if (!userEmail && !userId) return list;
+
+    return list.filter((n) => {
+      if (userId && n.userId === userId) return true;
+      if (userEmail && n.userEmail && n.userEmail.toLowerCase() === userEmail.toLowerCase()) return true;
+      return false;
+    });
+  },
+
+  async sendNotification(notif: AppNotification): Promise<AppNotification> {
+    const current = getLocal<AppNotification[]>(STORAGE_KEYS.NOTIFICATIONS, []);
+    const updated = [notif, ...current];
+    setLocal(STORAGE_KEYS.NOTIFICATIONS, updated);
+    return notif;
+  },
+
+  async markNotificationAsRead(id: string): Promise<void> {
+    const current = getLocal<AppNotification[]>(STORAGE_KEYS.NOTIFICATIONS, []);
+    const updated = current.map((n) => (n.id === id ? { ...n, read: true } : n));
+    setLocal(STORAGE_KEYS.NOTIFICATIONS, updated);
+  },
+
+  async clearNotifications(userEmail?: string): Promise<void> {
+    if (!userEmail) {
+      setLocal(STORAGE_KEYS.NOTIFICATIONS, []);
+      return;
+    }
+    const current = getLocal<AppNotification[]>(STORAGE_KEYS.NOTIFICATIONS, []);
+    const updated = current.filter((n) => n.userEmail?.toLowerCase() !== userEmail.toLowerCase());
+    setLocal(STORAGE_KEYS.NOTIFICATIONS, updated);
   },
 
   // ----------------------------------------
   // PARCEIROS E PROPAGANDAS (PARTNERS)
   // ----------------------------------------
   async getPartners(): Promise<Partner[]> {
-    if (isSupabaseConfigured) {
-      try {
-        const { data, error } = await supabase
-          .from('parceiros')
-          .select('*')
-          .order('created_at', { ascending: false });
-
-        if (!error && data && data.length > 0) {
-          const mapped: Partner[] = data.map((row: any) => ({
-            id: String(row.id),
-            name: row.name || row.nome || '',
-            category: row.category || row.tipo || 'Parceiro',
-            tagline: row.tagline || row.descricao || '',
-            image: row.image || row.logo_url || 'https://images.unsplash.com/photo-1583511655857-d19b40a7a54e',
-            url: row.url || row.link_contato || '#',
-            badge: row.badge,
-            discountOrBenefit: row.discount_or_benefit || row.beneficio
-          }));
-          setLocal(STORAGE_KEYS.PARTNERS, mapped);
-          return mapped;
-        }
-      } catch (err) {
-        console.warn('Falha ao buscar parceiros no Supabase:', err);
-      }
-    }
     return getLocal<Partner[]>(STORAGE_KEYS.PARTNERS, PARTNERS_LIST);
   },
 
@@ -683,28 +873,6 @@ export const dbService = {
       updated = [partner, ...current];
     }
     setLocal(STORAGE_KEYS.PARTNERS, updated);
-
-    if (isSupabaseConfigured) {
-      try {
-        await supabase.from('parceiros').upsert({
-          id: partner.id,
-          nome: partner.name,
-          name: partner.name,
-          tipo: partner.category,
-          category: partner.category,
-          tagline: partner.tagline,
-          logo_url: partner.image,
-          image: partner.image,
-          link_contato: partner.url,
-          url: partner.url,
-          badge: partner.badge,
-          discount_or_benefit: partner.discountOrBenefit
-        });
-      } catch (err) {
-        console.warn('Falha ao sincronizar parceiro no Supabase:', err);
-      }
-    }
-
     return partner;
   },
 
@@ -712,13 +880,5 @@ export const dbService = {
     const current = getLocal<Partner[]>(STORAGE_KEYS.PARTNERS, PARTNERS_LIST);
     const updated = current.filter((p) => p.id !== id);
     setLocal(STORAGE_KEYS.PARTNERS, updated);
-
-    if (isSupabaseConfigured) {
-      try {
-        await supabase.from('parceiros').delete().eq('id', id);
-      } catch (err) {
-        console.warn('Falha ao excluir parceiro no Supabase:', err);
-      }
-    }
   }
 };

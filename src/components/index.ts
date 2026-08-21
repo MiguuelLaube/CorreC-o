@@ -1,4 +1,6 @@
 export * from './Navbar';
+export * from './Sidebar';
+export * from './PartnerCarousel';
 export * from './Footer';
 export * from './AdoptionView';
 export * from './OngsView';
@@ -10,3 +12,7 @@ export * from './FosterFormView';
 export * from './AboutView';
 export * from './Modals';
 export * from './AdoptionInterestModal';
+export * from './ApplicantDetailsModal';
+export * from './EditPetModal';
+export * from './AccountSecurityModal';
+export * from './ThemeSelector';

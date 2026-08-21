@@ -3,6 +3,7 @@
 -- ==============================================================================
 
 -- 1. LIMPEZA SEGURA DE TABELAS ANTERIORES (GARANTE EXECUÇÃO 100% LIMPA)
+DROP TABLE IF EXISTS public.parceiros CASCADE;
 DROP TABLE IF EXISTS public.solicitations CASCADE;
 DROP TABLE IF EXISTS public.foster_requests CASCADE;
 DROP TABLE IF EXISTS public.pets CASCADE;
@@ -107,7 +108,20 @@ CREATE TABLE public.foster_requests (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- 7. ÍNDICES DE PERFORMANCE E ISOLAMENTO DE DADOS
+-- 7. TABELA DE PARCEIROS E PROPAGANDAS
+CREATE TABLE public.parceiros (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    category TEXT NOT NULL,
+    tagline TEXT,
+    image TEXT,
+    url TEXT,
+    badge TEXT,
+    discount_or_benefit TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- 8. ÍNDICES DE PERFORMANCE E ISOLAMENTO DE DADOS
 CREATE INDEX idx_pets_ong_id ON public.pets(ong_id);
 CREATE INDEX idx_solicitations_ong_id ON public.solicitations(ong_id);
 CREATE INDEX idx_solicitations_requester ON public.solicitations(requester_email);
@@ -115,18 +129,20 @@ CREATE INDEX idx_foster_accepted_ong ON public.foster_requests(accepted_by_ong_i
 CREATE INDEX idx_ongs_cnpj ON public.ongs(cnpj);
 CREATE INDEX idx_ongs_email ON public.ongs(email);
 
--- 8. POLÍTICAS DE ROW LEVEL SECURITY (RLS)
+-- 9. POLÍTICAS DE ROW LEVEL SECURITY (RLS)
 ALTER TABLE public.ongs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.pets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.solicitations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.foster_requests ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.usuarios ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.parceiros ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Public access on ongs" ON public.ongs FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Public access on pets" ON public.pets FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Public access on solicitations" ON public.solicitations FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Public access on foster_requests" ON public.foster_requests FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Public access on usuarios" ON public.usuarios FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Public access on parceiros" ON public.parceiros FOR ALL USING (true) WITH CHECK (true);
 
 -- ==============================================================================
 -- SEED INICIAL: DADOS COMPLETOS PARA O MATCHPET FUNCIONAR IMEDIATAMENTE
@@ -208,5 +224,36 @@ VALUES
     false
 );
 
--- C. BASE LIMPA: PETS, SOLICITAÇÕES E ACOLHIMENTOS DEVEM SER CADASTRADOS POR USUÁRIOS E ONGS
-
+-- C. PARCEIROS INICIAIS
+INSERT INTO public.parceiros (id, name, category, tagline, image, url, badge, discount_or_benefit)
+VALUES
+(
+    'partner-1',
+    'VetVida Hospital 24h',
+    'Saúde & Emergência',
+    'Atendimento veterinário especializado e pronto-socorro para pets.',
+    'https://images.unsplash.com/photo-1629909613654-28e377c37b09?auto=format&fit=crop&w=600&q=80',
+    'https://matchpet.ong.br',
+    'Desconto 20%',
+    '20% de desconto na primeira consulta de pets recém-adotados'
+),
+(
+    'partner-2',
+    'NutriPet Rações Premium',
+    'Alimentação Saudável',
+    'Nutrição completa e balanceada recomendada por veterinários.',
+    'https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?auto=format&fit=crop&w=600&q=80',
+    'https://matchpet.ong.br',
+    'Kit Boas-Vindas',
+    'Ganhe 1 pacote de ração super premium ao concluir sua adoção'
+),
+(
+    'partner-3',
+    'Banho & Carinho Pet Spa',
+    'Higiene & Estética',
+    'Banho terapêutico, tosa higiênica e bem-estar para seu novo amigo.',
+    'https://images.unsplash.com/photo-1516734212186-a967f81ad0d7?auto=format&fit=crop&w=600&q=80',
+    'https://matchpet.ong.br',
+    '1º Banho Grátis',
+    'Primeiro banho gratuito para animais resgatados via MatchPet'
+);

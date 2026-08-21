@@ -573,6 +573,161 @@ export const authService = {
     return { success: true };
   },
 
+  /**
+   * Alteração de Senha Segura via Supabase e Sincronização Local
+   * (Permitido EXCLUSIVAMENTE para Adotantes; ONGs e Admin possuem credenciais fixas/gerenciadas pelo Admin)
+   */
+  async updatePassword(
+    newPasswordInput: string,
+    currentPasswordInput: string
+  ): Promise<{ success: boolean; message?: string; error?: string }> {
+    const newPassword = newPasswordInput.trim();
+    const currentPassword = currentPasswordInput?.trim();
+
+    if (!currentPassword) {
+      return { success: false, error: 'Informe sua senha atual para autorizar a alteração.' };
+    }
+
+    if (!newPassword || newPassword.length < 6) {
+      return { success: false, error: 'A nova senha deve conter no mínimo 6 caracteres.' };
+    }
+
+    if (newPassword === currentPassword) {
+      return { success: false, error: 'A nova senha deve ser diferente da senha atual.' };
+    }
+
+    const currentUser = this.getCurrentUser();
+    const currentOng = this.getCurrentOngSession();
+
+    if (currentOng) {
+      if (currentOng.role === 'admin') {
+        return {
+          success: false,
+          error: 'As credenciais de acesso do Administrador Geral são fixas e não podem ser alteradas.'
+        };
+      } else {
+        return {
+          success: false,
+          error: 'Acesso restrito: apenas o Administrador Geral pode alterar a senha institucional de uma ONG.'
+        };
+      }
+    }
+
+    if (!currentUser) {
+      return { success: false, error: 'É necessário estar autenticado como adotante para alterar a senha.' };
+    }
+
+    const currentHash = await hashPassword(currentPassword);
+    const newHash = await hashPassword(newPassword);
+
+    // Validação e Alteração para Adotante Logado
+    const localUsers = getStoredUsers();
+    const found = localUsers.find((u) => u.email.toLowerCase() === currentUser.email.toLowerCase());
+
+    if (found && found.passwordHash && found.passwordHash !== currentHash) {
+      return { success: false, error: 'A senha atual informada está incorreta.' };
+    }
+
+    // Supabase Auth update
+    if (isSupabaseConfigured) {
+      try {
+        await supabase.auth.updateUser({ password: newPassword });
+        await withTimeout(
+          supabase
+            .from('usuarios')
+            .update({ senha_hash: newHash })
+            .eq('email', currentUser.email.toLowerCase()),
+          3000
+        );
+      } catch (err) {
+        console.warn('Erro ao atualizar senha no Supabase:', err);
+      }
+    }
+
+    // Atualização no storage local
+    const userIdx = localUsers.findIndex((u) => u.email.toLowerCase() === currentUser.email.toLowerCase());
+    if (userIdx >= 0) {
+      localUsers[userIdx].passwordHash = newHash;
+      saveStoredUsers(localUsers);
+    }
+
+    return { success: true, message: 'Sua senha foi alterada com sucesso no Supabase!' };
+  },
+
+  /**
+   * Alteração de E-mail via Supabase e Sincronização Local
+   * (Permitido EXCLUSIVAMENTE para Adotantes; ONGs são alteradas apenas pelo Administrador Geral no painel)
+   */
+  async updateEmail(
+    newEmailInput: string
+  ): Promise<{ success: boolean; message?: string; error?: string }> {
+    const newEmail = newEmailInput.trim().toLowerCase();
+
+    if (!newEmail || !newEmail.includes('@')) {
+      return { success: false, error: 'Informe um endereço de e-mail válido.' };
+    }
+
+    const currentUser = this.getCurrentUser();
+    const currentOng = this.getCurrentOngSession();
+
+    if (currentOng) {
+      if (currentOng.role === 'admin') {
+        return {
+          success: false,
+          error: 'O e-mail do Administrador Geral é fixo e não pode ser alterado.'
+        };
+      } else {
+        return {
+          success: false,
+          error: 'Acesso restrito: apenas o Administrador Geral pode alterar o e-mail de cadastro da ONG.'
+        };
+      }
+    }
+
+    if (!currentUser) {
+      return { success: false, error: 'É necessário estar autenticado como adotante para alterar o e-mail.' };
+    }
+
+    if (currentUser.email.toLowerCase() === newEmail) {
+      return { success: false, error: 'O novo e-mail é idêntico ao e-mail atual.' };
+    }
+
+    if (isSupabaseConfigured) {
+      try {
+        const { error: sbErr } = await supabase.auth.updateUser({ email: newEmail });
+        if (sbErr) {
+          console.warn('Supabase auth updateUser aviso:', sbErr);
+        }
+
+        await withTimeout(
+          supabase
+            .from('usuarios')
+            .update({ email: newEmail })
+            .eq('email', currentUser.email.toLowerCase()),
+          3000
+        );
+      } catch (err: any) {
+        console.warn('Erro ao atualizar e-mail no Supabase:', err);
+      }
+    }
+
+    // Atualizar local
+    const localUsers = getStoredUsers();
+    const userIdx = localUsers.findIndex((u) => u.email.toLowerCase() === currentUser.email.toLowerCase());
+    if (userIdx >= 0) {
+      localUsers[userIdx].email = newEmail;
+      saveStoredUsers(localUsers);
+    }
+
+    const updatedUser: User = { ...currentUser, email: newEmail };
+    localStorage.setItem(USER_SESSION_KEY, JSON.stringify(updatedUser));
+
+    return {
+      success: true,
+      message: 'E-mail atualizado com sucesso no Supabase!'
+    };
+  },
+
   logoutOng(): void {
     localStorage.removeItem(ONG_SESSION_KEY);
   }
